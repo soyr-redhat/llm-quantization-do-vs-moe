@@ -14,8 +14,8 @@ mDs = get_dataset(metaTokenizer)
 qwenTokenizer = AutoTokenizer.from_pretrained(QWEN_MODEL_ID)
 qDs = get_dataset(qwenTokenizer)
 
-# #------------------------META------------------------#
-# for SCHEME in SCHEMES:
+#------------------------META------------------------#
+for SCHEME in SCHEMES:
 #     metaModel = AutoModelForCausalLM.from_pretrained(META_MODEL_ID, dtype="auto")
     
 #     metaRecipe = GPTQModifier(
@@ -38,8 +38,6 @@ qDs = get_dataset(qwenTokenizer)
 #     metaTokenizer.save_pretrained(SAVE_DIR)
 
 #------------------------QWEN------------------------#
-
-for SCHEME in SCHEMES:
     qwenModel = AutoModelForCausalLM.from_pretrained(QWEN_MODEL_ID, dtype="auto")
     
     qwenRecipe = GPTQModifier(
