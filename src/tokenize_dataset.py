@@ -16,7 +16,7 @@ def get_dataset(tokenizer):
                 tokenize=False,
             )
         }
-    ds = ds.map(preprocess)
+    ds = ds.map(preprocess) # apply the chat template to all elements
 
     def tokenize(sample):
         return tokenizer(
