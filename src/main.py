@@ -50,7 +50,7 @@ for SCHEME in SCHEMES:
     # Apply quantization.
     oneshot(
         model=qwenModel,
-        dataset=ds,
+        dataset=qDs,
         recipe=qwenRecipe,
         max_seq_length=MAX_SEQUENCE_LENGTH,
         num_calibration_samples=NUM_CALIBRATION_SAMPLES
