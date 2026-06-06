@@ -39,6 +39,10 @@ spec:
           env:
             - name: HOME
               value: /tmp
+            - name: USER
+              value: vllm
+            - name: TORCHINDUCTOR_CACHE_DIR
+              value: /tmp/torch_cache
             - name: HF_HOME
               value: /tmp/huggingface
             - name: VLLM_CACHE_ROOT
