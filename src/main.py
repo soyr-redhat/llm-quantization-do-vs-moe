@@ -9,28 +9,55 @@ QWEN_MODEL_ID = "Qwen/Qwen1.5-MoE-A2.7B" # small MoE model
 SCHEMES = ["W8A8", "W4A16", "FP8", "NVFP4"]
 
 metaTokenizer = AutoTokenizer.from_pretrained(META_MODEL_ID)
-ds = get_dataset(metaTokenizer)
+mDs = get_dataset(metaTokenizer)
 
-#------------------------META------------------------#
-for SCHEME in SCHEMES:
-    metaModel = AutoModelForCausalLM.from_pretrained(META_MODEL_ID, dtype="auto")
+qwenTokenizer = AutoTokenizer.from_pretrained(QWEN_MODEL_ID)
+qDs = get_dataset(qwenTokenizer)
+
+# #------------------------META------------------------#
+# for SCHEME in SCHEMES:
+#     metaModel = AutoModelForCausalLM.from_pretrained(META_MODEL_ID, dtype="auto")
     
-    metaRecipe = GPTQModifier(
+#     metaRecipe = GPTQModifier(
+#         targets="Linear",
+#         scheme=SCHEME,
+#         ignore=["lm_head"],
+#     )
+#     # Apply quantization.
+#     oneshot(
+#         model=metaModel,
+#         dataset=mDs,
+#         recipe=metaRecipe,
+#         max_seq_length=MAX_SEQUENCE_LENGTH,
+#         num_calibration_samples=NUM_CALIBRATION_SAMPLES
+#     )
+
+#     # Save to disk in compressed-tensors format.
+#     SAVE_DIR = "/output/" + "meta/" + META_MODEL_ID.split("/")[1] + f"-{SCHEME}"
+#     metaModel.save_pretrained(SAVE_DIR)
+#     metaTokenizer.save_pretrained(SAVE_DIR)
+# #----------------------------------------------------#
+
+#------------------------QWEN------------------------#
+for SCHEME in SCHEMES:
+    qwenModel = AutoModelForCausalLM.from_pretrained(QWEN_MODEL_ID, dtype="auto")
+    
+    qwenRecipe = GPTQModifier(
         targets="Linear",
         scheme=SCHEME,
-        ignore=["lm_head"],
+        ignore=["lm_head", "re:model.layers.(0?[0-9]|1).*$"],
     )
     # Apply quantization.
     oneshot(
-        model=metaModel,
+        model=qwenModel,
         dataset=ds,
-        recipe=metaRecipe,
+        recipe=qwenRecipe,
         max_seq_length=MAX_SEQUENCE_LENGTH,
         num_calibration_samples=NUM_CALIBRATION_SAMPLES
     )
 
-    # Save to disk in compressed-tensors format.
-    SAVE_DIR = "/output/" + "meta/" + META_MODEL_ID.split("/")[1] + f"-{SCHEME}"
-    metaModel.save_pretrained(SAVE_DIR)
-    metaTokenizer.save_pretrained(SAVE_DIR)
+    # Save to disk in compressed-tensors format.by
+    SAVE_DIR = "/output/" + "qwen/" + QWEN_MODEL_ID.split("/")[1] + f"-{SCHEME}"
+    qwenModel.save_pretrained(SAVE_DIR)
+    qwenTokenizer.save_pretrained(SAVE_DIR)
 #----------------------------------------------------#
