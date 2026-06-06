@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: inference-models
+  namespace: user-sbowerma
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ibmc-vpc-block-10iops-tier
+  resources:
+    requests:
+      storage: 10Gi
