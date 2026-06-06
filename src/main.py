@@ -32,6 +32,3 @@ for SCHEME in SCHEMES:
     metaModel.save_pretrained(SAVE_DIR)
     metaTokenizer.save_pretrained(SAVE_DIR)
 #----------------------------------------------------#
-
-
-
