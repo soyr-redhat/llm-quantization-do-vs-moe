@@ -8,8 +8,8 @@ META_MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct" # small decoder-only model
 QWEN_MODEL_ID = "Qwen/Qwen1.5-MoE-A2.7B" # small MoE model
 SCHEMES = ["W8A8", "W4A16", "FP8", "NVFP4"]
 
-metaTokenizer = AutoTokenizer.from_pretrained(META_MODEL_ID)
-mDs = get_dataset(metaTokenizer)
+# metaTokenizer = AutoTokenizer.from_pretrained(META_MODEL_ID)
+# mDs = get_dataset(metaTokenizer)
 
 qwenTokenizer = AutoTokenizer.from_pretrained(QWEN_MODEL_ID, trust_remote_code=True)
 qDs = get_dataset(qwenTokenizer)
@@ -54,7 +54,7 @@ for SCHEME in SCHEMES:
         num_calibration_samples=NUM_CALIBRATION_SAMPLES
     )
 
-    # Save to disk in compressed-tensors format.by
+    # Save to disk in compressed-tensors format
     SAVE_DIR = "/output/" + "qwen/" + QWEN_MODEL_ID.split("/")[1] + f"-{SCHEME}"
     qwenModel.save_pretrained(SAVE_DIR)
     qwenTokenizer.save_pretrained(SAVE_DIR)
