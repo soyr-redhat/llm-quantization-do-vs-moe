@@ -23,7 +23,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: vllm
-          image: vllm/vllm-openai:v0.6.2
+          image: vllm/vllm-openai:latest
           args:
             - --model
             - /models/meta/Llama-3.2-1B-Instruct-W4A16
