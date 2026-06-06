@@ -1,7 +1,7 @@
 from datasets import load_dataset
 
 DATASET = "HuggingFaceH4/ultrachat_200k"
-DATASET_SPLIT = "train_sft"
+DATASET_SPLIT = "train_sft" # name of split in ds
 NUM_CALIBRATION_SAMPLES = 512
 MAX_SEQUENCE_LENGTH = 2048
 
@@ -16,7 +16,7 @@ def get_dataset(tokenizer):
                 tokenize=False,
             )
         }
-    ds.map(preprocess)
+    ds = ds.map(preprocess)
 
     def tokenize(sample):
         return tokenizer(
