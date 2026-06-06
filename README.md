@@ -34,3 +34,18 @@ openshift/
   quantize-pvc.yaml      # PVC for storing quantized model output
 report.tex               # LaTeX report with results and analysis
 ```
+
+
+## Example Outputs
+
+| Model | Scheme | Format | Input Prompt | Output |
+|-------|--------|--------|--------------|--------|
+|[Meta-Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|W4A16| INT4 | `Explain quantization in machine learning in 3 sentences.` | `Quantization in machine learning refers to the process of representing continuous features or inputs in discrete or numerical form, such as integers or floats, to reduce the number of dimensions and improve model efficiency. This is typically done using techniques like discrete wavelet transform or quantization layers, where the continuous input is discretized into discrete values. The resulting discrete representations can be used as input features to the model, allowing for faster and more efficient training of machine learning models.` |
+| [Meta-Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)| W8A8 | INT8 | `Explain quantization in machine learning in 3 sentences.` | "" | 
+| [Meta-Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)| FP8 | INT8 | `Explain quantization in machine learning in 3 sentences.` | "" | 
+
+
+
+| Model | Scheme | Format | Input Prompt | Output |
+|-------|--------|--------|--------------|--------|
+|[Qwen1.5-MoE-A2.7B](https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B)|
