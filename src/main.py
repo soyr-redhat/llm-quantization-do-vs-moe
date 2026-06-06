@@ -11,7 +11,7 @@ SCHEMES = ["W8A8", "W4A16", "FP8", "NVFP4"]
 metaTokenizer = AutoTokenizer.from_pretrained(META_MODEL_ID)
 mDs = get_dataset(metaTokenizer)
 
-qwenTokenizer = AutoTokenizer.from_pretrained(QWEN_MODEL_ID)
+qwenTokenizer = AutoTokenizer.from_pretrained(QWEN_MODEL_ID, trust_remote_code=True)
 qDs = get_dataset(qwenTokenizer)
 
 #------------------------META------------------------#
@@ -38,12 +38,12 @@ for SCHEME in SCHEMES:
 #     metaTokenizer.save_pretrained(SAVE_DIR)
 
 #------------------------QWEN------------------------#
-    qwenModel = AutoModelForCausalLM.from_pretrained(QWEN_MODEL_ID, dtype="auto")
+    qwenModel = AutoModelForCausalLM.from_pretrained(QWEN_MODEL_ID, dtype="auto", trust_remote_code=True)
     
     qwenRecipe = GPTQModifier(
         targets="Linear",
         scheme=SCHEME,
-        ignore=["lm_head", "re:model.layers.(0?[0-9]|1).*$"],
+        ignore=["lm_head", "re:.*mlp.gate$"],
     )
     # Apply quantization.
     oneshot(
