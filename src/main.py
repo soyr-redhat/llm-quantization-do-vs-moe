@@ -36,9 +36,9 @@ qDs = get_dataset(qwenTokenizer)
 #     SAVE_DIR = "/output/" + "meta/" + META_MODEL_ID.split("/")[1] + f"-{SCHEME}"
 #     metaModel.save_pretrained(SAVE_DIR)
 #     metaTokenizer.save_pretrained(SAVE_DIR)
-# #----------------------------------------------------#
 
 #------------------------QWEN------------------------#
+
 for SCHEME in SCHEMES:
     qwenModel = AutoModelForCausalLM.from_pretrained(QWEN_MODEL_ID, dtype="auto")
     
