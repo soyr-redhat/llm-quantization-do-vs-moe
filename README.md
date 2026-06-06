@@ -34,9 +34,3 @@ openshift/
   quantize-pvc.yaml      # PVC for storing quantized model output
 report.tex               # LaTeX report with results and analysis
 ```
-
-## Hardware
-
-- Quantization: 1xH200
-- Inference testing: NVIDIA RTX 3090 Turbo
-    - for applicable models
