@@ -20,6 +20,8 @@ All schemes use GPTQ with 512 calibration samples from `ultrachat_200k`.
 | FP8 | FP8 | 8-bit floating point weights and activations |
 | NVFP4 | FP4 | 4-bit floating point weights (Blackwell/Hopper) |
 
+```in the future, additional quantization algorithms can be explored```
+
 ## Project Structure
 
 ```
