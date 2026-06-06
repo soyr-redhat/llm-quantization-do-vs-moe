@@ -1,0 +1,213 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  breaklines=true
+}
+
+\title{LLM Quantization with \texttt{\href{https://github.com/vllm-project/llm-compressor}{llm-compressor}}:\\Decoder-Only vs.\ Mixture of Experts}
+\author{Sawyer Bowerman}
+\date{June, 2026}
+
+
+\begin{document}
+\maketitle
+\newpage
+\section{Overview}
+\begin{itemize}
+  \item \textbf{Objective:}
+  The goal for this project is to gain a level of understanding of how certain quantization schemes impact a model in a few different ways. (All of these will be done in comparison to the baseline model):
+  \begin{itemize}
+      \item performance
+      \item memory consumption
+      \item throughput
+  \end{itemize}
+  To do so, I'll apply FP8, INT8, INT4, and FP4 quantization schemes to a small decoder-only model and a small MoE model using \texttt{llm-compressor}.
+  \item \textbf{Models:}
+  The models in question for this weekend+future week's study are:
+    \begin{itemize}
+      \item \href{https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct}{Meta-Llama-3.2-1B-Instruct} for the decoder-only model
+      \item \href{https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B}{Qwen1.5-MoE-A2.7B} for our small MoE model.
+    \end{itemize}
+\end{itemize}
+\newpage
+
+\section{Environment Setup}
+\begin{itemize}
+  \item Hardware (GPU, VRAM)
+  \item Python environment and dependencies
+  \item \texttt{llm-compressor} installation and version
+  \item Calibration dataset selection
+\end{itemize}
+
+\section{Baseline: Unquantized Models}
+
+\subsection{Decoder-Only — Llama 3.2 1B Instruct}
+\begin{itemize}
+  \item Model size on disk
+  \item Inference latency (tokens/sec)
+  \item Perplexity / eval benchmark (optional)
+  \item Peak memory usage
+\end{itemize}
+
+\subsection{MoE — Qwen1.5-MoE-A2.7B}
+\begin{itemize}
+  \item Model size on disk
+  \item Inference latency (tokens/sec)
+  \item Perplexity / eval benchmark (optional)
+  \item Peak memory usage
+\end{itemize}
+
+\section{Quantization Schemes}
+
+\subsection{FP8 (W8A8 Float)}
+\subsubsection{Background}
+\begin{itemize}
+  \item What FP8 is (E4M3 vs.\ E5M2 formats)
+  \item When to use it
+\end{itemize}
+\subsubsection{Decoder-Only Results}
+\begin{itemize}
+  \item \texttt{llm-compressor} recipe / config used
+  \item Model size on disk
+  \item Inference latency
+  \item Quality (perplexity / sample outputs)
+  \item Notes and observations
+\end{itemize}
+\subsubsection{MoE Results}
+\begin{itemize}
+  \item Recipe / config used (per-expert vs.\ global scaling)
+  \item Model size on disk
+  \item Inference latency
+  \item Quality
+  \item Notes and observations
+\end{itemize}
+
+\subsection{INT8 (W8A8 Integer)}
+\subsubsection{Background}
+\begin{itemize}
+  \item Symmetric vs.\ asymmetric quantization
+  \item Static vs.\ dynamic activation quantization
+\end{itemize}
+\subsubsection{Decoder-Only Results}
+\begin{itemize}
+  \item Recipe / config used
+  \item Model size on disk
+  \item Inference latency
+  \item Quality
+  \item Notes and observations
+\end{itemize}
+\subsubsection{MoE Results}
+\begin{itemize}
+  \item Recipe / config used
+  \item Model size on disk
+  \item Inference latency
+  \item Quality
+  \item Notes and observations
+\end{itemize}
+
+\subsection{INT4 (W4A16)}
+\subsubsection{Background}
+\begin{itemize}
+  \item Weight-only quantization
+  \item GPTQ vs.\ other INT4 methods
+  \item Group size considerations
+\end{itemize}
+\subsubsection{Decoder-Only Results}
+\begin{itemize}
+  \item Recipe / config used
+  \item Model size on disk
+  \item Inference latency
+  \item Quality
+  \item Notes and observations
+\end{itemize}
+\subsubsection{MoE Results}
+\begin{itemize}
+  \item Recipe / config used
+  \item Model size on disk
+  \item Inference latency
+  \item Quality
+  \item Notes and observations
+\end{itemize}
+
+\subsection{FP4 (W4A16 Float)}
+\subsubsection{Background}
+\begin{itemize}
+  \item FP4 format and how it differs from INT4
+  \item Trade-offs vs.\ INT4
+\end{itemize}
+\subsubsection{Decoder-Only Results}
+\begin{itemize}
+  \item Recipe / config used
+  \item Model size on disk
+  \item Inference latency
+  \item Quality
+  \item Notes and observations
+\end{itemize}
+\subsubsection{MoE Results}
+\begin{itemize}
+  \item Recipe / config used
+  \item Model size on disk
+  \item Inference latency
+  \item Quality
+  \item Notes and observations
+\end{itemize}
+
+\section{Comparison}
+
+\begin{table}[h]
+\centering
+\caption{Decoder-Only (Llama 3.2 1B Instruct)}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Scheme} & \textbf{Size (GB)} & \textbf{Tokens/s} & \textbf{Perplexity} & \textbf{Peak VRAM} \\
+\midrule
+Baseline & & & & \\
+FP8      & & & & \\
+INT8     & & & & \\
+INT4     & & & & \\
+FP4      & & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{MoE (Qwen1.5-MoE-A2.7B)}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Scheme} & \textbf{Size (GB)} & \textbf{Tokens/s} & \textbf{Perplexity} & \textbf{Peak VRAM} \\
+\midrule
+Baseline & & & & \\
+FP8      & & & & \\
+INT8     & & & & \\
+INT4     & & & & \\
+FP4      & & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{MoE-Specific Observations}
+\begin{itemize}
+  \item Impact of quantization on expert routing
+  \item Per-expert vs.\ global quantization scaling
+  \item Sensitivity of router weights to quantization
+  \item Any expert load-balancing shifts post-quantization
+\end{itemize}
+
+\section{Key Takeaways}
+\begin{itemize}
+  \item Which schemes gave the best size/quality trade-off
+  \item Decoder-only vs.\ MoE quantization differences
+  \item Practical recommendations
+  \item Lessons learned with \texttt{llm-compressor}
+\end{itemize}
+
+\end{document}
