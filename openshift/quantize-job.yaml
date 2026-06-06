@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: llm-quantization
+  namespace: user-sbowerma
+  labels:
+    app: llm-quantization
+    kueue.x-k8s.io/queue-name: unreserved
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: llm-quantization
+        kueue.x-k8s.io/queue-name: unreserved
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        node.kubernetes.io/instance-type: gx3d-160x1792x8h200
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: quantizer
+          image: vllm/vllm-openai:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              pip install llmcompressor &&
+              curl -sL https://github.com/soyr-redhat/llm-quantization-do-vs-moe/archive/refs/heads/main.tar.gz | tar xz -C /tmp &&
+              cd /tmp/llm-quantization-do-vs-moe-main/src &&
+              python3 main.py
+          env:
+            - name: HOME
+              value: /tmp
+            - name: USER
+              value: vllm
+            - name: HF_HOME
+              value: /tmp/huggingface
+            - name: TORCHINDUCTOR_CACHE_DIR
+              value: /tmp/torch_cache
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: quantize-secrets
+                  key: hf-token
+                  optional: true
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: quantize-secrets
+                  key: hf-token
+                  optional: true
+          volumeMounts:
+            - name: output
+              mountPath: /output
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              cpu: "8"
+              memory: 32Gi
+            requests:
+              nvidia.com/gpu: "1"
+              cpu: "8"
+              memory: 32Gi
+      volumes:
+        - name: output
+          persistentVolumeClaim:
+            claimName: quantize-output
