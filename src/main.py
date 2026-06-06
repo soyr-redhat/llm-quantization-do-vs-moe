@@ -14,7 +14,7 @@ ds = get_dataset(tokenizer)
 
 for SCHEME in SCHEMES:
     metaRecipe = GPTQModifier(
-        targets="Linear"
+        targets="Linear",
         scheme=SCHEME,
         ignore=["lm_head"],
     )
@@ -28,7 +28,7 @@ for SCHEME in SCHEMES:
     )
 
     # Save to disk in compressed-tensors format.
-    SAVE_DIR = META_MODEL_ID.split("/")[1] + "-FP8-BLOCK"
+    SAVE_DIR = "meta/" + META_MODEL_ID.split("/")[1] + f"-{SCHEME}"
     metaModel.save_pretrained(SAVE_DIR)
     tokenizer.save_pretrained(SAVE_DIR)
 
