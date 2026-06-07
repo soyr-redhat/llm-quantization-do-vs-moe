@@ -44,8 +44,8 @@ def load_lm_eval_results(results_dir):
             continue
         results_file = None
         for root, _, files in os.walk(entry_path):
-            for f in files:
-                if f == "results.json":
+            for f in sorted(files, reverse=True):
+                if f.startswith("results") and f.endswith(".json"):
                     results_file = os.path.join(root, f)
                     break
             if results_file:
@@ -81,10 +81,17 @@ def load_guidellm_results(results_dir):
         benchmarks = result.get("benchmarks", [result])
         bench = benchmarks[-1] if isinstance(benchmarks, list) else benchmarks
 
-        data[name] = {
-            "tps": bench.get("output_token_throughput", 0),
-            "ttft": bench.get("ttft_mean", 0) or bench.get("time_to_first_token_mean", 0),
-        }
+        metrics = bench.get("metrics", {})
+        if metrics:
+            tps_block = metrics.get("output_tokens_per_second", {}).get("successful", {})
+            ttft_block = metrics.get("time_to_first_token_ms", {}).get("successful", {})
+            tps = tps_block.get("mean", 0)
+            ttft = ttft_block.get("mean", 0) / 1000.0
+        else:
+            tps = bench.get("output_token_throughput", 0)
+            ttft = bench.get("ttft_mean", 0) or bench.get("time_to_first_token_mean", 0)
+
+        data[name] = {"tps": tps, "ttft": ttft}
     return data
 
 
