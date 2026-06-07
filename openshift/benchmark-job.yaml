@@ -30,7 +30,7 @@ spec:
               set -euo pipefail
 
               export PATH="/tmp/.local/bin:$PATH"
-              pip install lm-eval guidellm
+              pip install "lm-eval[api]" guidellm
 
               # Patch actorder bug on PVC configs (W8A8 and FP8 use channel/tensor strategy)
               python3 -c "
@@ -114,12 +114,19 @@ spec:
 
                 # guidellm: throughput / latency
                 echo "--- guidellm ---"
-                guidellm \
+                guidellm benchmark \
                   --target "http://localhost:8000/v1" \
                   --model "${SERVED_MODEL}" \
-                  --rate-type sweep \
+                  --profile kind=sweep \
                   --max-seconds 120 \
-                  --output-path "/output/metrics/guidellm/${NAME}.json" || echo "WARNING: guidellm failed for ${NAME}"
+                  --output-dir "/output/metrics/guidellm/_tmp_${NAME}" \
+                  --outputs json || echo "WARNING: guidellm failed for ${NAME}"
+
+                # Move guidellm output to expected location
+                if ls /output/metrics/guidellm/_tmp_${NAME}/*.json 1>/dev/null 2>&1; then
+                  mv /output/metrics/guidellm/_tmp_${NAME}/*.json "/output/metrics/guidellm/${NAME}.json"
+                  rm -rf "/output/metrics/guidellm/_tmp_${NAME}"
+                fi
 
                 # Stop vLLM
                 echo "Stopping vLLM..."
