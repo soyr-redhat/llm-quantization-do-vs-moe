@@ -102,19 +102,20 @@ spec:
 
                 # guidellm: throughput / latency
                 echo "--- guidellm ---"
+                mkdir -p /output/metrics/guidellm/tmp
                 guidellm benchmark run \
                   --target "http://localhost:8000/v1" \
                   --model "${SERVED_MODEL}" \
                   --data "kind=synthetic_text,prompt_tokens=256,output_tokens=128" \
                   --profile sweep \
-                  --max-seconds 120 \
-                  --output-dir "/output/metrics/guidellm/_tmp_${NAME}" \
+                  --max-seconds 30 \
+                  --max-requests 200 \
+                  --output-dir /output/metrics/guidellm/tmp \
                   --outputs json || echo "WARNING: guidellm failed for ${NAME}"
 
                 # Move guidellm output to expected location
-                if ls /output/metrics/guidellm/_tmp_${NAME}/*.json 1>/dev/null 2>&1; then
-                  mv /output/metrics/guidellm/_tmp_${NAME}/*.json "/output/metrics/guidellm/${NAME}.json"
-                  rm -rf "/output/metrics/guidellm/_tmp_${NAME}"
+                if ls /output/metrics/guidellm/tmp/*.json 1>/dev/null 2>&1; then
+                  mv /output/metrics/guidellm/tmp/*.json "/output/metrics/guidellm/${NAME}.json"
                 fi
 
                 # Stop vLLM
