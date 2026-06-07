@@ -4,6 +4,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Base models
 MODELS = [
     "Llama-3.2-1B-Instruct",
     "Qwen1.5-MoE-A2.7B",
@@ -21,11 +22,6 @@ COLORS = {
 
 
 def load_guidellm_results(results_dir):
-    """Load guidellm benchmark results from JSON files.
-
-    Expects files named like: {model_name}-{scheme}.json
-    Each file should contain guidellm output with benchmarks array.
-    """
     data = {}
     for fname in os.listdir(results_dir):
         if not fname.endswith(".json"):
@@ -45,7 +41,6 @@ def load_guidellm_results(results_dir):
 
 
 def load_disk_sizes(output_dir):
-    """Get model sizes on disk in GB."""
     sizes = {}
     for dirpath, _, filenames in os.walk(output_dir):
         model_name = os.path.basename(dirpath)
@@ -59,7 +54,6 @@ def load_disk_sizes(output_dir):
 
 
 def plot_tps(data, output_path="metrics/tps.png"):
-    """Bar chart: tokens/s per model per scheme."""
     fig, axes = plt.subplots(1, len(MODELS), figsize=(14, 6), sharey=True)
     if len(MODELS) == 1:
         axes = [axes]
@@ -88,7 +82,6 @@ def plot_tps(data, output_path="metrics/tps.png"):
 
 
 def plot_ttft_vs_tps(data, output_path="metrics/ttft_vs_tps.png"):
-    """Scatter: TTFT (ms) vs TPS per model, colored by scheme."""
     fig, ax = plt.subplots(figsize=(10, 6))
 
     for key, vals in data.items():
@@ -121,7 +114,6 @@ def plot_ttft_vs_tps(data, output_path="metrics/ttft_vs_tps.png"):
 
 
 def plot_disk_sizes(sizes, output_path="metrics/disk_sizes.png"):
-    """Bar chart: model size on disk in GB."""
     fig, axes = plt.subplots(1, len(MODELS), figsize=(14, 6), sharey=True)
     if len(MODELS) == 1:
         axes = [axes]
