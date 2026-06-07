@@ -45,12 +45,20 @@ lm_eval \
 
 echo ""
 echo "--- guidellm (throughput / latency) ---"
-guidellm \
+GUIDELLM_TMP="${GUIDELLM_DIR}/_tmp_${MODEL_NAME}"
+guidellm benchmark run \
     --target "${ENDPOINT}/v1" \
     --model "${SERVED_MODEL}" \
-    --rate-type sweep \
+    --data "kind=synthetic_text,prompt_tokens=256,output_tokens=128" \
+    --profile sweep \
     --max-seconds 120 \
-    --output-path "${GUIDELLM_DIR}/${MODEL_NAME}.json"
+    --output-dir "${GUIDELLM_TMP}" \
+    --outputs json
+
+if ls "${GUIDELLM_TMP}"/*.json 1>/dev/null 2>&1; then
+    mv "${GUIDELLM_TMP}"/*.json "${GUIDELLM_DIR}/${MODEL_NAME}.json"
+    rm -rf "${GUIDELLM_TMP}"
+fi
 
 echo ""
 echo "=== Done: ${MODEL_NAME} ==="
