@@ -44,7 +44,7 @@ for SCHEME in SCHEMES:
     qwenRecipe = GPTQModifier(
         targets="Linear",
         scheme=SCHEME,
-        ignore=["lm_head", "re:.*mlp.gate$"],
+        ignore=["lm_head", "re:.*mlp.gate$", "re:.*shared_expert_gate$"],
     )
     
     # Apply quantization.
