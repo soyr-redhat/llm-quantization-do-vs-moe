@@ -41,11 +41,27 @@
 
 \section{Environment Setup}
 \begin{itemize}
-  \item Hardware (GPU, VRAM)
-  \item Python environment and dependencies
-  \item \texttt{llm-compressor} installation and version
-  \item Calibration dataset selection
+  \item \textbf{Quantization:} NVIDIA H200 (141GB HBM3e) on an OpenShift cluster, using \texttt{vllm/vllm-openai:latest} container with \texttt{llm-compressor} 0.11.0 and \texttt{compressed-tensors} 0.16.0.
+  \item \textbf{Inference:} NVIDIA H200 MIG slice (1g.18gb, 18GB VRAM) on the same cluster, served via vLLM 0.22.1 with the OpenAI-compatible API.
+  \item \textbf{Calibration dataset:} 512 samples from \href{https://huggingface.co/datasets/HuggingFaceH4/ultrachat_200k}{\texttt{ultrachat\_200k}} (\texttt{train\_sft} split), tokenized to a max sequence length of 2048.
+  \item \textbf{Quantization algorithm:} GPTQ (via \texttt{GPTQModifier}) across all four schemes for consistency. This isolates the effect of the quantization format itself, removing algorithmic variation as a confounding factor.
 \end{itemize}
+
+\section{Evaluation Methodology}
+
+\subsection{Quality — lm-evaluation-harness}
+Model quality is measured using \href{https://github.com/EleutherAI/lm-evaluation-harness}{\texttt{lm-evaluation-harness}} against the vLLM-served models via the OpenAI-compatible API. Benchmarks are run on both the baseline (unquantized) and all quantized variants, providing accuracy and/or perplexity scores that directly measure quality degradation from quantization.
+
+\subsection{Performance — guidellm}
+Inference performance is benchmarked using \href{https://github.com/neuralmagic/guidellm}{\texttt{guidellm}}, which measures:
+\begin{itemize}
+  \item \textbf{Output token throughput} (tokens/s) — sustained generation speed.
+  \item \textbf{Time to first token} (TTFT) — latency before generation begins.
+\end{itemize}
+Each model variant is benchmarked under the same conditions (prompt distribution, concurrency) to enable direct comparison.
+
+\subsection{Model Size}
+On-disk model size (in GB) is recorded for each quantized checkpoint and the baseline, directly reflecting compression ratio.
 
 \section{Baseline: Unquantized Models}
 
