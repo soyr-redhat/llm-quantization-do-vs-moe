@@ -20,19 +20,21 @@ All schemes use GPTQ with 512 calibration samples from `ultrachat_200k`.
 | FP8 | FP8 | 8-bit floating point weights and activations |
 | NVFP4 | FP4 | 4-bit floating point weights (Blackwell/Hopper) |
 
-```in the future, additional quantization algorithms can be explored```
-
 ## Project Structure
 
 ```
 src/
   main.py               # Quantization script (GPTQ across all schemes)
-  tokenize_dataset.py    # Calibration dataset loading and tokenization
-  generations.py         # Sample generation testing
+  tokenize_dataset.py   # Calibration dataset loading and tokenization
+  metrics.py            # Chart generation and CSV export from benchmark results
+  benchmark.sh          # Local benchmarking script (lm-eval + guidellm)
 openshift/
-  quantize-job.yaml      # K8s job for running quantization on GPU cluster
-  quantize-pvc.yaml      # PVC for storing quantized model output
-report.tex               # LaTeX report with results and analysis
+  quantize-job.yaml     # K8s job for running quantization on GPU cluster
+  quantize-pvc.yaml     # PVC for storing quantized model output
+  benchmark-job.yaml    # K8s job for running benchmarks on GPU cluster
+  inference-deployment.yaml  # vLLM inference deployment
+  inference-pvc.yaml    # PVC for inference model storage
+report.tex              # LaTeX report with results and analysis
 ```
 
 
