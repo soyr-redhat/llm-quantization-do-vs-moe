@@ -235,6 +235,48 @@ An alternative strategy would be to skip quantization of early transformer layer
   \item Any expert load-balancing shifts post-quantization
 \end{itemize}
 
+\section{Bug Found: \texttt{actorder} Serialization in llm-compressor}
+
+During this study, I discovered a bug in \texttt{llm-compressor} 0.11.0 (\texttt{compressed-tensors} 0.16.0) that prevents W8A8 and FP8 models quantized with GPTQ from being served by vLLM.
+
+\subsection{The Problem}
+
+\texttt{GPTQModifier} unconditionally writes \texttt{actorder: "static"} into the saved model's \texttt{config.json} for all quantization schemes. Activation ordering controls the order columns are processed within each group during GPTQ quantization — it is only meaningful when the quantization strategy uses groups (\texttt{group} or \texttt{tensor\_group}).
+
+For W8A8 (\texttt{strategy: "channel"}) and FP8 (\texttt{strategy: "tensor"}), there are no groups, so \texttt{actorder} is semantically meaningless. vLLM 0.22.1 correctly validates this and rejects the model at load time:
+
+\begin{lstlisting}
+pydantic_core._pydantic_core.ValidationError:
+  Value error, Must use group or tensor_group quantization
+  strategy in order to apply activation ordering
+\end{lstlisting}
+
+\subsection{Root Cause}
+
+Reading through the llm-compressor source, I traced the issue to \texttt{GPTQModifier}'s config serialization. There is an existing guard in \texttt{resolve\_quantization\_config()} (\href{https://github.com/vllm-project/llm-compressor/blob/main/src/llmcompressor/modifiers/gptq/base.py\#L177-L186}{base.py:177--186}) that resets \texttt{actorder} to \texttt{None} for non-grouped strategies, but it only checks for \texttt{actorder == ActivationOrdering.GROUP}. The \texttt{STATIC} and \texttt{WEIGHT} orderings slip through unchecked. A similar partial guard exists in \texttt{quantize\_weight()} (\href{https://github.com/vllm-project/llm-compressor/blob/main/src/llmcompressor/modifiers/gptq/gptq_quantize.py\#L98-L106}{gptq\_quantize.py:98--106}).
+
+\subsection{Impact}
+
+This means \textbf{any W8A8 or FP8 model quantized with GPTQ via llm-compressor 0.11.0 cannot be served by vLLM} without manual intervention. W4A16 and NVFP4 are unaffected because they use \texttt{group} and \texttt{tensor\_group} strategies respectively, where \texttt{actorder: "static"} is valid.
+
+\subsection{Workaround}
+
+Rather than upgrading the vLLM container image (which would have required resubmitting preexisting cluster jobs), I applied a targeted fix: a Python script that patches \texttt{config.json} for all affected models on the PVC, setting \texttt{weights.actorder} to \texttt{null} where \texttt{weights.strategy} is \texttt{"channel"} or \texttt{"tensor"}:
+
+\begin{lstlisting}[language=Python]
+for g in config["quantization_config"]["config_groups"].values():
+    w = g.get("weights", {})
+    if w.get("strategy") in ("channel", "tensor") \
+       and w.get("actorder") is not None:
+        w["actorder"] = None
+\end{lstlisting}
+
+This patch was applied to both the HuggingFace-uploaded models and the PVC copies used for benchmarking.
+
+\subsection{Upstream Report}
+
+I filed this as \href{https://github.com/vllm-project/llm-compressor/issues/2805}{issue \#2805} on the llm-compressor repository with full reproduction steps, environment details, and a proposed fix. The issue was acknowledged by the maintainers and has since been addressed via a \texttt{compressed-tensors} version bump on vLLM main.
+
 \section{Key Takeaways}
 \begin{itemize}
   \item Which schemes gave the best size/quality trade-off

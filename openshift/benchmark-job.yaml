@@ -1,0 +1,176 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: llm-benchmark
+  namespace: user-sbowerma
+  labels:
+    app: llm-benchmark
+    kueue.x-k8s.io/queue-name: unreserved
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: llm-benchmark
+        kueue.x-k8s.io/queue-name: unreserved
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        node.kubernetes.io/instance-type: gx3d-160x1792x8h200
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: benchmarker
+          image: vllm/vllm-openai:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+
+              export PATH="/tmp/.local/bin:$PATH"
+              pip install lm-eval guidellm
+
+              # Patch actorder bug on PVC configs (W8A8 and FP8 use channel/tensor strategy)
+              python3 -c "
+              import json, glob
+              for pattern in ['/output/meta/*-W8A8/config.json', '/output/meta/*-FP8/config.json',
+                              '/output/qwen/*-W8A8/config.json', '/output/qwen/*-FP8/config.json']:
+                  for path in glob.glob(pattern):
+                      with open(path) as f:
+                          config = json.load(f)
+                      changed = False
+                      for g in config.get('quantization_config', {}).get('config_groups', {}).values():
+                          w = g.get('weights', {})
+                          if w.get('strategy') in ('channel', 'tensor') and w.get('actorder') is not None:
+                              w['actorder'] = None
+                              changed = True
+                      if changed:
+                          with open(path, 'w') as f:
+                              json.dump(config, f, indent=2)
+                          print(f'Patched: {path}')
+              "
+
+              mkdir -p /output/metrics/lm-eval /output/metrics/guidellm
+
+              MODELS=(
+                "Llama-3.2-1B-Instruct-W8A8|/output/meta/Llama-3.2-1B-Instruct-W8A8|meta-llama/Llama-3.2-1B-Instruct"
+                "Llama-3.2-1B-Instruct-W4A16|/output/meta/Llama-3.2-1B-Instruct-W4A16|meta-llama/Llama-3.2-1B-Instruct"
+                "Llama-3.2-1B-Instruct-FP8|/output/meta/Llama-3.2-1B-Instruct-FP8|meta-llama/Llama-3.2-1B-Instruct"
+                "Llama-3.2-1B-Instruct-NVFP4|/output/meta/Llama-3.2-1B-Instruct-NVFP4|meta-llama/Llama-3.2-1B-Instruct"
+                "Qwen1.5-MoE-A2.7B-W8A8|/output/qwen/Qwen1.5-MoE-A2.7B-W8A8|Qwen/Qwen1.5-MoE-A2.7B"
+                "Qwen1.5-MoE-A2.7B-W4A16|/output/qwen/Qwen1.5-MoE-A2.7B-W4A16|Qwen/Qwen1.5-MoE-A2.7B"
+                "Qwen1.5-MoE-A2.7B-FP8|/output/qwen/Qwen1.5-MoE-A2.7B-FP8|Qwen/Qwen1.5-MoE-A2.7B"
+                "Qwen1.5-MoE-A2.7B-NVFP4|/output/qwen/Qwen1.5-MoE-A2.7B-NVFP4|Qwen/Qwen1.5-MoE-A2.7B"
+              )
+
+              for entry in "${MODELS[@]}"; do
+                IFS='|' read -r NAME MODEL_PATH TOKENIZER <<< "$entry"
+
+                echo ""
+                echo "============================================================"
+                echo "Benchmarking: ${NAME}"
+                echo "Model path: ${MODEL_PATH}"
+                echo "Tokenizer: ${TOKENIZER}"
+                echo "============================================================"
+
+                # Start vLLM in the background
+                python3 -m vllm.entrypoints.openai.api_server \
+                  --model "${MODEL_PATH}" \
+                  --host 0.0.0.0 \
+                  --port 8000 \
+                  --max-model-len 2048 \
+                  --gpu-memory-utilization 0.90 \
+                  --trust-remote-code &
+                VLLM_PID=$!
+
+                # Wait for vLLM to be ready
+                echo "Waiting for vLLM to start..."
+                for i in $(seq 1 120); do
+                  if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+                    echo "vLLM ready after ${i}s"
+                    break
+                  fi
+                  if ! kill -0 $VLLM_PID 2>/dev/null; then
+                    echo "ERROR: vLLM process died for ${NAME}, skipping..."
+                    continue 2
+                  fi
+                  sleep 1
+                done
+
+                SERVED_MODEL=$(curl -s http://localhost:8000/v1/models | python3 -c "import json,sys; print(json.load(sys.stdin)['data'][0]['id'])")
+                echo "Served model: ${SERVED_MODEL}"
+
+                # lm-eval: wikitext perplexity
+                echo "--- lm-eval ---"
+                lm_eval \
+                  --model local-completions \
+                  --model_args "model=${SERVED_MODEL},base_url=http://localhost:8000/v1/completions,tokenizer_backend=huggingface,tokenizer=${TOKENIZER},num_concurrent=1,max_retries=5" \
+                  --tasks wikitext \
+                  --num_fewshot 0 \
+                  --output_path "/output/metrics/lm-eval/${NAME}" \
+                  --log_samples || echo "WARNING: lm-eval failed for ${NAME}"
+
+                # guidellm: throughput / latency
+                echo "--- guidellm ---"
+                guidellm \
+                  --target "http://localhost:8000/v1" \
+                  --model "${SERVED_MODEL}" \
+                  --rate-type sweep \
+                  --max-seconds 120 \
+                  --output-path "/output/metrics/guidellm/${NAME}.json" || echo "WARNING: guidellm failed for ${NAME}"
+
+                # Stop vLLM
+                echo "Stopping vLLM..."
+                kill $VLLM_PID 2>/dev/null
+                wait $VLLM_PID 2>/dev/null || true
+                sleep 5
+
+                echo "Done: ${NAME}"
+              done
+
+              echo ""
+              echo "============================================================"
+              echo "All benchmarks complete!"
+              echo "Results saved to /output/metrics/"
+              ls -la /output/metrics/guidellm/
+              ls -la /output/metrics/lm-eval/
+              echo "============================================================"
+          env:
+            - name: HOME
+              value: /tmp
+            - name: USER
+              value: vllm
+            - name: HF_HOME
+              value: /tmp/huggingface
+            - name: TORCHINDUCTOR_CACHE_DIR
+              value: /tmp/torch_cache
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: quantize-secrets
+                  key: hf-token
+                  optional: true
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: quantize-secrets
+                  key: hf-token
+                  optional: true
+          volumeMounts:
+            - name: output
+              mountPath: /output
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              cpu: "8"
+              memory: 64Gi
+            requests:
+              nvidia.com/gpu: "1"
+              cpu: "8"
+              memory: 64Gi
+      volumes:
+        - name: output
+          persistentVolumeClaim:
+            claimName: quantize-output
