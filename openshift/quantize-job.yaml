@@ -59,11 +59,11 @@ spec:
             limits:
               nvidia.com/gpu: "1"
               cpu: "8"
-              memory: 128Gi
+              memory: 192Gi
             requests:
               nvidia.com/gpu: "1"
               cpu: "8"
-              memory: 128Gi
+              memory: 192Gi
       volumes:
         - name: output
           persistentVolumeClaim:
