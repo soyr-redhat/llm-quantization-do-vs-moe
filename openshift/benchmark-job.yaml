@@ -114,10 +114,10 @@ spec:
 
                 # guidellm: throughput / latency
                 echo "--- guidellm ---"
-                guidellm benchmark \
+                guidellm benchmark run \
                   --target "http://localhost:8000/v1" \
                   --model "${SERVED_MODEL}" \
-                  --profile kind=sweep \
+                  --profile sweep \
                   --max-seconds 120 \
                   --output-dir "/output/metrics/guidellm/_tmp_${NAME}" \
                   --outputs json || echo "WARNING: guidellm failed for ${NAME}"
