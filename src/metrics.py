@@ -20,7 +20,6 @@ COLORS = {
     "NVFP4": "#C678DD",
 }
 
-
 def load_guidellm_results(results_dir):
     data = {}
     for fname in os.listdir(results_dir):
