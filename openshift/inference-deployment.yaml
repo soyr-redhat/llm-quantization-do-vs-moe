@@ -26,7 +26,7 @@ spec:
           image: vllm/vllm-openai:latest
           args:
             - --model
-            - /output/meta/Llama-3.2-1B-Instruct-W8A8
+            - /models/meta/Llama-3.2-1B-Instruct-W8A8
             - --host
             - 0.0.0.0
             - --port
@@ -74,7 +74,7 @@ spec:
             timeoutSeconds: 10
           volumeMounts:
             - name: output
-              mountPath: /output
+              mountPath: /models
               readOnly: true
           resources:
             limits:
@@ -84,7 +84,7 @@ spec:
       volumes:
         - name: output
           persistentVolumeClaim:
-            claimName: quantize-output
+            claimName: inference-models
 ---
 apiVersion: v1
 kind: Service
