@@ -55,8 +55,6 @@ spec:
               mkdir -p /output/metrics/lm-eval /output/metrics/guidellm
 
               MODELS=(
-                "deepseek-moe-16b-chat-W4A16|/output/deepseek/deepseek-moe-16b-chat-W4A16|deepseek-ai/deepseek-moe-16b-chat"
-                "deepseek-moe-16b-chat-FP8|/output/deepseek/deepseek-moe-16b-chat-FP8|deepseek-ai/deepseek-moe-16b-chat"
                 "deepseek-moe-16b-chat-NVFP4|/output/deepseek/deepseek-moe-16b-chat-NVFP4|deepseek-ai/deepseek-moe-16b-chat"
               )
 
