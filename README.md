@@ -18,7 +18,7 @@ All schemes use GPTQ with 512 calibration samples from `ultrachat_200k`.
 | W8A8 | INT8 | 8-bit integer weights and activations |
 | W4A16 | INT4 | 4-bit integer weights, 16-bit activations |
 | FP8 | FP8 | 8-bit floating point weights and activations |
-| NVFP4 | FP4 | 4-bit floating point weights (Blackwell/Hopper) |
+| NVFP4 | FP4 | 4-bit floating point weights and activations (Blackwell/Hopper) |
 
 ## Project Structure
 
