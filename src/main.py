@@ -44,7 +44,7 @@ for SCHEME in SCHEMES:
     dsRecipe = GPTQModifier(
         targets="Linear",
         scheme=SCHEME,
-        ignore=["lm_head", "re:.*mlp\.gate$"],
+        ignore=["lm_head", "re:.*mlp\.gate$", "model.layers.0.mlp.down_proj"],
     )
 
     # Apply quantization.
