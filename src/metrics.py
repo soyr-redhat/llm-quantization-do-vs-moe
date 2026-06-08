@@ -7,12 +7,12 @@ import numpy as np
 
 MODELS = [
     "Llama-3.2-1B-Instruct",
-    "Qwen1.5-MoE-A2.7B",
+    "deepseek-moe-16b-chat",
 ]
 
 MODEL_LABELS = {
     "Llama-3.2-1B-Instruct": "Llama 3.2 1B Instruct (Decoder-Only)",
-    "Qwen1.5-MoE-A2.7B": "Qwen 1.5 MoE A2.7B (MoE)",
+    "deepseek-moe-16b-chat": "DeepSeek-MoE 16B Chat (MoE)",
 }
 
 SCHEMES = ["Baseline", "W8A8", "W4A16", "FP8", "NVFP4"]
@@ -150,14 +150,14 @@ def plot_ttft_vs_tps(data, output_path):
         scheme = parts[-1] if len(parts) > 1 and parts[-1] in SCHEMES else "Baseline"
         model = parts[0] if scheme != "Baseline" else key
 
-        marker = "o" if "Llama" in model else "s"
+        marker = "o" if "Llama" in key else "s"
         ax.scatter(
             vals["tps"],
             vals["ttft"] * 1000,
             c=COLORS.get(scheme, "#999"),
             marker=marker,
             s=120,
-            label=f"{scheme} ({'DO' if 'Llama' in model else 'MoE'})",
+            label=f"{scheme} ({'DO' if 'Llama' in key else 'MoE'})",
             edgecolors="black",
             linewidth=0.5,
         )
@@ -215,7 +215,7 @@ def export_summary_csv(perf, quality, sizes, output_path="metrics/summary.csv"):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     rows = []
     for model in MODELS:
-        arch = "Decoder-Only" if "Llama" in model else "MoE"
+        arch = "Decoder-Only" if "Llama" in model else "MoE (DeepSeek)"
         for scheme in SCHEMES:
             key = _model_scheme_key(model, scheme)
             row = {

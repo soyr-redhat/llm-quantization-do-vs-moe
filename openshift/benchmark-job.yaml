@@ -36,7 +36,7 @@ spec:
               python3 -c "
               import json, glob
               for pattern in ['/output/meta/*-W8A8/config.json', '/output/meta/*-FP8/config.json',
-                              '/output/qwen/*-W8A8/config.json', '/output/qwen/*-FP8/config.json']:
+                              '/output/deepseek/*-W8A8/config.json', '/output/deepseek/*-FP8/config.json']:
                   for path in glob.glob(pattern):
                       with open(path) as f:
                           config = json.load(f)
@@ -55,7 +55,7 @@ spec:
               mkdir -p /output/metrics/lm-eval /output/metrics/guidellm
 
               MODELS=(
-                "Qwen1.5-MoE-A2.7B-W8A8|/output/qwen/Qwen1.5-MoE-A2.7B-W8A8|Qwen/Qwen1.5-MoE-A2.7B"
+                "deepseek-moe-16b-chat-W8A8|/output/deepseek/deepseek-moe-16b-chat-W8A8|deepseek-ai/deepseek-moe-16b-chat"
               )
 
               for entry in "${MODELS[@]}"; do

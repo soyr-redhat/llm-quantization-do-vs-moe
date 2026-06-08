@@ -34,7 +34,7 @@
   The models in question for this weekend+future week's study are:
     \begin{itemize}
       \item \href{https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct}{Meta-Llama-3.2-1B-Instruct} for the decoder-only model
-      \item \href{https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B}{Qwen1.5-MoE-A2.7B} for our small MoE model.
+      \item \href{https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat}{DeepSeek-MoE-16B-Chat} for our MoE model.
     \end{itemize}
 \end{itemize}
 \newpage
@@ -73,7 +73,7 @@ On-disk model size (in GB) is recorded for each quantized checkpoint and the bas
   \item Peak memory usage
 \end{itemize}
 
-\subsection{MoE — Qwen1.5-MoE-A2.7B}
+\subsection{MoE — DeepSeek-MoE-16B-Chat}
 \begin{itemize}
   \item Model size on disk
   \item Inference latency (tokens/sec)
@@ -196,7 +196,7 @@ FP4      & & & & \\
 
 \begin{table}[h]
 \centering
-\caption{MoE (Qwen1.5-MoE-A2.7B)}
+\caption{MoE (DeepSeek-MoE-16B-Chat)}
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Scheme} & \textbf{Size (GB)} & \textbf{Tokens/s} & \textbf{Perplexity} & \textbf{Peak VRAM} \\
@@ -214,15 +214,15 @@ FP4      & & & & \\
 
 \subsection{Layer Ignore Strategy}
 
-When quantizing MoE models, certain layers must be excluded from quantization to preserve model quality. Two layers were kept at full precision in all Qwen MoE quantization runs:
+When quantizing MoE models, certain layers must be excluded from quantization to preserve model quality. Two layers were kept at full precision in all DeepSeek MoE quantization runs:
 
 \begin{itemize}
   \item \textbf{\texttt{lm\_head}} — The final projection layer that maps hidden states to vocabulary logits. Every token prediction flows through this layer, making it disproportionately sensitive to quantization error. Since it represents a negligible fraction of total model parameters, the cost of keeping it in FP16 is effectively zero.
 
-  \item \textbf{\texttt{re:.*mlp.gate\$}} — The MoE router weights. For each token, the router computes scores across all 60 experts and selects the top 4 for activation. These weights are extremely small (a linear projection of $2048 \times 60 \approx 120$K parameters per layer), but quantization errors here can change \emph{which experts are selected} entirely — a token intended for expert 12 might be misrouted to expert 37. This cascading misrouting degrades quality far more than slightly imprecise arithmetic within the correct expert. The compression savings from quantizing these tiny layers would be negligible anyway.
+  \item \textbf{\texttt{re:.*mlp\textbackslash{}.gate\$}} — The MoE router weights. For each token, the router computes scores across all 64 experts and selects the top 6 for activation (plus 2 shared experts that are always active). These weights are extremely small (a linear projection of $2048 \times 64 \approx 131$K parameters per layer), but quantization errors here can change \emph{which experts are selected} entirely — a token intended for expert 12 might be misrouted to expert 37. This cascading misrouting degrades quality far more than slightly imprecise arithmetic within the correct expert. The compression savings from quantizing these tiny layers would be negligible anyway.
 \end{itemize}
 
-Note that Qwen1.5-MoE-A2.7B does not use a \texttt{shared\_expert\_gate} — the shared expert is always active (unconditionally added to every token's computation), so no additional gate ignore is needed.
+DeepSeek-MoE-16B uses 2 shared experts per layer that are unconditionally active (always added to every token's computation). The first transformer layer uses a dense FFN instead of MoE (\texttt{first\_k\_dense\_replace: 1}), which is handled transparently by the quantizer.
 
 \subsubsection{Why Not Ignore Entire Early Layers?}
 

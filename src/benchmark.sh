@@ -26,8 +26,8 @@ echo "Served model ID: ${SERVED_MODEL}"
 BASE_MODEL=$(echo "$MODEL_NAME" | sed -E 's/-(W[48]A1[68]|FP8|NVFP4|Baseline)$//')
 if echo "$BASE_MODEL" | grep -q "Llama"; then
     TOKENIZER="meta-llama/${BASE_MODEL}"
-elif echo "$BASE_MODEL" | grep -q "Qwen"; then
-    TOKENIZER="Qwen/${BASE_MODEL}"
+elif echo "$BASE_MODEL" | grep -q "deepseek"; then
+    TOKENIZER="deepseek-ai/${BASE_MODEL}"
 else
     TOKENIZER="$BASE_MODEL"
 fi

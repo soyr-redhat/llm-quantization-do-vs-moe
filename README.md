@@ -7,7 +7,7 @@ Comparing FP8, INT8, INT4, and FP4 quantization schemes across two model archite
 | Model | Architecture | Total Params | Active Params |
 |-------|-------------|-------------|---------------|
 | [Meta-Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct) | Decoder-only | 1B | 1B |
-| [Qwen1.5-MoE-A2.7B](https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B) | Mixture of Experts | ~14B | 2.7B |
+| [DeepSeek-MoE-16B-Chat](https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat) | Mixture of Experts | ~16B | 2.8B |
 
 ## Quantization Schemes
 
@@ -51,7 +51,7 @@ report.tex              # LaTeX report with results and analysis
 
 | Model | Scheme | Format | Input Prompt | Output |
 |-------|--------|--------|--------------|--------|
-|[Qwen1.5-MoE-A2.7B](https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B)| W8A8 | INT8 |`Explain quantization in machine learning in 3 sentences.` | |
-|[Qwen1.5-MoE-A2.7B](https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B)| W4A16 | INT4|`Explain quantization in machine learning in 3 sentences.` | |
-|[Qwen1.5-MoE-A2.7B](https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B)| FP8 | FP8 |`Explain quantization in machine learning in 3 sentences.` | |
-|[Qwen1.5-MoE-A2.7B](https://huggingface.co/Qwen/Qwen1.5-MoE-A2.7B)| NVFP4 | FP4 |`Explain quantization in machine learning in 3 sentences.` | |
+|[DeepSeek-MoE-16B-Chat](https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat)| W8A8 | INT8 |`Explain quantization in machine learning in 3 sentences.` | |
+|[DeepSeek-MoE-16B-Chat](https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat)| W4A16 | INT4|`Explain quantization in machine learning in 3 sentences.` | |
+|[DeepSeek-MoE-16B-Chat](https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat)| FP8 | FP8 |`Explain quantization in machine learning in 3 sentences.` | |
+|[DeepSeek-MoE-16B-Chat](https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat)| NVFP4 | FP4 |`Explain quantization in machine learning in 3 sentences.` | |
