@@ -7,7 +7,7 @@ from tokenize_dataset import get_dataset, MAX_SEQUENCE_LENGTH, NUM_CALIBRATION_S
 META_MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct" # small decoder-only model
 DEEPSEEK_MODEL_ID = "deepseek-ai/deepseek-moe-16b-chat" # small MoE model
 # SCHEMES = ["W8A8", "W4A16", "FP8", "NVFP4"]
-SCHEMES = ["W8A8"]
+SCHEMES = ["W4A16", "FP8", "NVFP4"]
 # metaTokenizer = AutoTokenizer.from_pretrained(META_MODEL_ID)
 # mDs = get_dataset(metaTokenizer)
 
