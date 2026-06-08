@@ -53,7 +53,8 @@ for SCHEME in SCHEMES:
         dataset=dsDs,
         recipe=dsRecipe,
         max_seq_length=MAX_SEQUENCE_LENGTH,
-        num_calibration_samples=NUM_CALIBRATION_SAMPLES
+        num_calibration_samples=NUM_CALIBRATION_SAMPLES,
+        trust_remote_code_model=True,
     )
 
     # Save to disk in compressed-tensors format
