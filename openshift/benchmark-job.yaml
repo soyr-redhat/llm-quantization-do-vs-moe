@@ -55,7 +55,9 @@ spec:
               mkdir -p /output/metrics/lm-eval /output/metrics/guidellm
 
               MODELS=(
-                "deepseek-moe-16b-chat-W8A8|/output/deepseek/deepseek-moe-16b-chat-W8A8|deepseek-ai/deepseek-moe-16b-chat"
+                "deepseek-moe-16b-chat-W4A16|/output/deepseek/deepseek-moe-16b-chat-W4A16|deepseek-ai/deepseek-moe-16b-chat"
+                "deepseek-moe-16b-chat-FP8|/output/deepseek/deepseek-moe-16b-chat-FP8|deepseek-ai/deepseek-moe-16b-chat"
+                "deepseek-moe-16b-chat-NVFP4|/output/deepseek/deepseek-moe-16b-chat-NVFP4|deepseek-ai/deepseek-moe-16b-chat"
               )
 
               for entry in "${MODELS[@]}"; do
@@ -80,7 +82,7 @@ spec:
 
                 # Wait for vLLM to be ready
                 echo "Waiting for vLLM to start..."
-                for i in $(seq 1 120); do
+                for i in $(seq 1 300); do
                   if curl -s http://localhost:8000/health > /dev/null 2>&1; then
                     echo "vLLM ready after ${i}s"
                     break
