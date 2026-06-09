@@ -28,11 +28,17 @@ src/
   tokenize_dataset.py   # Calibration dataset loading and tokenization
   metrics.py            # Chart generation and CSV export from benchmark results
   benchmark.sh          # Local benchmarking script (lm-eval + guidellm)
+metrics/
+  llama_3.2_1B/         # Llama benchmark results and generated charts
+    guidellm/           # guidellm JSON results per scheme
+    lm-eval/            # lm-eval perplexity results per scheme
+  deepseek_moe_16b/     # DeepSeek benchmark results and generated charts
+    guidellm/
+    lm-eval/
 openshift/
   quantize-job.yaml     # K8s job for running quantization on GPU cluster
   quantize-pvc.yaml     # PVC for storing quantized model output
   benchmark-job.yaml    # K8s job for running benchmarks on GPU cluster
-  inference-deployment.yaml  # vLLM inference deployment
   inference-pvc.yaml    # PVC for inference model storage
 report.tex              # LaTeX report with results and analysis
 ```
