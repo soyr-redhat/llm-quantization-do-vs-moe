@@ -11,7 +11,7 @@ Comparing FP8, INT8, INT4, and FP4 quantization schemes across two model archite
 
 ## Quantization Schemes
 
-All schemes use GPTQ with 512 calibration samples from `ultrachat_200k`.
+All schemes use GPTQ with 512 calibration samples from `ultrachat_200k`. All quantized models are available in the [HuggingFace collection](https://huggingface.co/collections/soyrsoyr/quantized-models).
 
 | Scheme | Format | Description |
 |--------|--------|-------------|
