@@ -45,14 +45,15 @@
   \item \textbf{Inference:} NVIDIA H200 MIG slice (1g.18gb, 18GB VRAM) on the same cluster, served via vLLM 0.22.1 with the OpenAI-compatible API.
   \item \textbf{Calibration dataset:} 512 samples from \href{https://huggingface.co/datasets/HuggingFaceH4/ultrachat_200k}{\texttt{ultrachat\_200k}} (\texttt{train\_sft} split), tokenized to a max sequence length of 2048.
   \item \textbf{Quantization algorithm:} GPTQ (via \texttt{GPTQModifier}) across all four schemes for consistency. This isolates the effect of the quantization format itself, removing algorithmic variation as a confounding factor.
+  \item \textbf{Quantized models:} All quantized checkpoints are published in this \href{https://huggingface.co/collections/soyrsoyr/quantized-models}{HuggingFace collection}.
 \end{itemize}
 
 \section{Evaluation Methodology}
 
-\subsection{Quality — lm-evaluation-harness}
+\subsection{Quality: lm-evaluation-harness}
 Model quality is measured using \href{https://github.com/EleutherAI/lm-evaluation-harness}{\texttt{lm-evaluation-harness}} against the vLLM-served models via the OpenAI-compatible API. Benchmarks are run on both the baseline (unquantized) and all quantized variants, providing accuracy and/or perplexity scores that directly measure quality degradation from quantization.
 
-\subsection{Performance — guidellm}
+\subsection{Performance: guidellm}
 Inference performance is benchmarked using \href{https://github.com/neuralmagic/guidellm}{\texttt{guidellm}}, which measures:
 \begin{itemize}
   \item \textbf{Output token throughput} (tokens/s) — sustained generation speed.
@@ -63,133 +64,125 @@ Each model variant is benchmarked under the same conditions (prompt distribution
 \subsection{Model Size}
 On-disk model size (in GB) is recorded for each quantized checkpoint and the baseline, directly reflecting compression ratio.
 
+\newpage
 \section{Baseline: Unquantized Models}
 
-\subsection{Decoder-Only — Llama 3.2 1B Instruct}
+\subsection{Decoder-Only (Llama 3.2 1B Instruct)}
 \begin{itemize}
-  \item Model size on disk
-  \item Inference latency (tokens/sec)
-  \item Perplexity / eval benchmark (optional)
-  \item Peak memory usage
+  \item \textbf{Model size on disk:} 2.47\,GB (BF16)
+  \item \textbf{Perplexity:} 17.25 (WikiText, word-level)
 \end{itemize}
 
-\subsection{MoE — DeepSeek-MoE-16B-Chat}
+\subsection{MoE (DeepSeek-MoE-16B-Chat)}
 \begin{itemize}
-  \item Model size on disk
-  \item Inference latency (tokens/sec)
-  \item Perplexity / eval benchmark (optional)
-  \item Peak memory usage
+  \item \textbf{Model size on disk:} 32.75\,GB (BF16)
+  \item \textbf{Perplexity:} 29.80 (WikiText, word-level)
 \end{itemize}
+
+Note: Baseline throughput and latency benchmarks were not collected, as the focus of this study is on the relative impact of quantization schemes rather than absolute baseline performance. Quantized variants are compared against each other and against baseline perplexity.
 
 \section{Quantization Schemes}
 
 \subsection{FP8 (W8A8 Float)}
 \subsubsection{Background}
-\begin{itemize}
-  \item What FP8 is (E4M3 vs.\ E5M2 formats)
-  \item When to use it
-\end{itemize}
+FP8 quantizes both weights and activations to 8-bit floating point using the E4M3 format (4-bit exponent, 3-bit mantissa). Unlike integer quantization, FP8 preserves the floating-point dynamic range, making it well-suited for layers with wide activation distributions. It offers a balance between compression and quality — typically the least lossy of the four schemes tested.
+
+\texttt{llm-compressor} applies FP8 via GPTQ using a \texttt{tensor} strategy (one scale factor per tensor), so no group size is needed.
+
 \subsubsection{Decoder-Only Results}
 \begin{itemize}
-  \item \texttt{llm-compressor} recipe / config used
-  \item Model size on disk
-  \item Inference latency
-  \item Quality (perplexity / sample outputs)
-  \item Notes and observations
+  \item \textbf{Model size:} 1.50\,GB (39\% reduction from 2.47\,GB baseline)
+  \item \textbf{Throughput:} 15{,}121 tokens/s, TTFT 38.3\,ms
+  \item \textbf{Perplexity:} 17.54 (+1.7\% vs.\ baseline 17.25)
 \end{itemize}
+FP8 delivers near-baseline quality with meaningful compression. The 1.7\% perplexity increase is negligible in practice.
+
 \subsubsection{MoE Results}
 \begin{itemize}
-  \item Recipe / config used (per-expert vs.\ global scaling)
-  \item Model size on disk
-  \item Inference latency
-  \item Quality
-  \item Notes and observations
+  \item \textbf{Model size:} 16.82\,GB (49\% reduction from 32.75\,GB baseline)
+  \item \textbf{Throughput:} 7{,}015 tokens/s, TTFT 115.9\,ms
+  \item \textbf{Perplexity:} 30.32 (+1.7\% vs.\ baseline 29.80)
 \end{itemize}
+FP8 achieves nearly identical perplexity degradation on the MoE model as on the decoder-only model, and delivers the highest throughput of all schemes on DeepSeek. The \texttt{tensor} strategy avoids the actorder serialization bug (see Section~8).
 
 \subsection{INT8 (W8A8 Integer)}
 \subsubsection{Background}
-\begin{itemize}
-  \item Symmetric vs.\ asymmetric quantization
-  \item Static vs.\ dynamic activation quantization
-\end{itemize}
+INT8 quantizes both weights and activations to 8-bit signed integers. GPTQ applies this with a \texttt{channel} strategy (one scale/zero-point per output channel), which provides finer granularity than tensor-level scaling. This scheme uses symmetric quantization — no zero-point offset — which simplifies the math at inference time.
+
 \subsubsection{Decoder-Only Results}
 \begin{itemize}
-  \item Recipe / config used
-  \item Model size on disk
-  \item Inference latency
-  \item Quality
-  \item Notes and observations
+  \item \textbf{Model size:} 1.50\,GB (39\% reduction)
+  \item \textbf{Throughput:} 16{,}398 tokens/s, TTFT 51.9\,ms
+  \item \textbf{Perplexity:} 17.45 (+1.1\% vs.\ baseline)
 \end{itemize}
+W8A8 achieves the best quality preservation of all schemes on Llama and the highest throughput, making it the clear winner for the decoder-only model when quality matters.
+
 \subsubsection{MoE Results}
 \begin{itemize}
-  \item Recipe / config used
-  \item Model size on disk
-  \item Inference latency
-  \item Quality
-  \item Notes and observations
+  \item \textbf{Model size:} 16.82\,GB (49\% reduction)
+  \item \textbf{Throughput:} 5{,}530 tokens/s, TTFT 103.1\,ms
+  \item \textbf{Perplexity:} 29.70 (\textbf{$-$0.3\%} vs.\ baseline)
 \end{itemize}
+W8A8 on DeepSeek actually \emph{improves} perplexity slightly over the BF16 baseline (29.70 vs.\ 29.80). This is a known phenomenon where quantization's implicit regularization effect can marginally benefit models evaluated on held-out data. Like FP8, the \texttt{channel} strategy triggers the actorder serialization bug.
 
 \subsection{INT4 (W4A16)}
 \subsubsection{Background}
-\begin{itemize}
-  \item Weight-only quantization
-  \item GPTQ vs.\ other INT4 methods
-  \item Group size considerations
-\end{itemize}
-\subsubsection{Decoder-Only Results}
-\begin{itemize}
-  \item Recipe / config used
-  \item Model size on disk
-  \item Inference latency
-  \item Quality
-  \item Notes and observations
-\end{itemize}
-\subsubsection{MoE Results}
-\begin{itemize}
-  \item Recipe / config used
-  \item Model size on disk
-  \item Inference latency
-  \item Quality
-  \item Notes and observations
-\end{itemize}
+INT4 is a weight-only scheme: weights are quantized to 4-bit integers with a \texttt{group} strategy (group size 128), while activations remain in FP16. This maximizes compression but puts significant pressure on the model's representational capacity. GPTQ's Hessian-based optimization mitigates this by finding the least-destructive rounding decisions, but the 4$\times$ reduction in weight precision is inherently lossy.
 
-\subsection{FP4 (W4A16 Float)}
-\subsubsection{Background}
-\begin{itemize}
-  \item FP4 format and how it differs from INT4
-  \item Trade-offs vs.\ INT4
-\end{itemize}
 \subsubsection{Decoder-Only Results}
 \begin{itemize}
-  \item Recipe / config used
-  \item Model size on disk
-  \item Inference latency
-  \item Quality
-  \item Notes and observations
+  \item \textbf{Model size:} 1.03\,GB (58\% reduction)
+  \item \textbf{Throughput:} 16{,}147 tokens/s, TTFT 46.2\,ms
+  \item \textbf{Perplexity:} 51.61 (\textbf{+199\%} vs.\ baseline)
 \end{itemize}
+\textbf{This is the most significant finding of the study.} INT4 causes catastrophic quality degradation on the 1B-parameter Llama model. With only 1 billion parameters, the model lacks sufficient redundancy to absorb 4-bit weight quantization — every weight carries proportionally more information than in a larger model. The 3$\times$ perplexity increase renders the model functionally unreliable for downstream tasks.
+
+This contrasts sharply with INT4's behavior on larger models (7B+), where the same scheme typically causes $<$10\% perplexity increase. The result underscores a critical practical guideline: \textbf{aggressive weight quantization should not be applied to sub-3B parameter models without careful validation.}
+
 \subsubsection{MoE Results}
 \begin{itemize}
-  \item Recipe / config used
-  \item Model size on disk
-  \item Inference latency
-  \item Quality
-  \item Notes and observations
+  \item \textbf{Model size:} 9.11\,GB (72\% reduction)
+  \item \textbf{Throughput:} 6{,}322 tokens/s, TTFT 87.2\,ms
+  \item \textbf{Perplexity:} 32.56 (+9.3\% vs.\ baseline)
 \end{itemize}
+The MoE model handles INT4 far more gracefully: only 9.3\% perplexity increase vs.\ Llama's 199\%. DeepSeek's 16B total parameters provide enough redundancy, and the MoE routing structure means quantization errors in any single expert are diluted across the 6 active experts per token. The gate weights (kept in FP16) ensure correct expert selection even when expert internals are aggressively compressed.
+
+Note: \texttt{model.layers.0.mlp.down\_proj} was excluded from INT4 quantization because its 10{,}944 columns are not divisible by the group size of 128.
+
+\subsection{NVFP4 (W4A4 Float)}
+\subsubsection{Background}
+NVFP4 is NVIDIA's 4-bit floating-point format, designed for Hopper and Blackwell GPUs. Unlike INT4's uniform quantization grid, FP4 uses a floating-point representation that provides higher precision near zero and lower precision for outliers — better matching the typical weight distribution of neural networks. GPTQ applies this with a \texttt{tensor\_group} strategy.
+
+\subsubsection{Decoder-Only Results}
+\begin{itemize}
+  \item \textbf{Model size:} 1.07\,GB (57\% reduction)
+  \item \textbf{Throughput:} 14{,}397 tokens/s, TTFT 45.7\,ms
+  \item \textbf{Perplexity:} 18.66 (+8.2\% vs.\ baseline)
+\end{itemize}
+NVFP4 dramatically outperforms INT4 on the small model (18.66 vs.\ 51.61 perplexity) despite similar compression ratios (1.07\,GB vs.\ 1.03\,GB). The floating-point format's non-uniform quantization grid preserves quality far better than INT4's linear grid, validating the architectural motivation behind NVFP4. The 8.2\% perplexity increase is tolerable for many applications.
+
+\subsubsection{MoE Results}
+\begin{itemize}
+  \item \textbf{Model size:} 9.85\,GB (70\% reduction)
+  \item \textbf{Throughput:} 5{,}168 tokens/s, TTFT 94.3\,ms
+  \item \textbf{Perplexity:} 30.87 (+3.6\% vs.\ baseline)
+\end{itemize}
+On the MoE model, NVFP4 again outperforms INT4 on quality (3.6\% vs.\ 9.3\% perplexity increase), though the gap is smaller because the larger model already absorbs INT4's quantization error more effectively. The slightly larger model size than INT4 (9.85\,GB vs.\ 9.11\,GB) reflects FP4's scale factor overhead.
 
 \section{Comparison}
 
 \begin{table}[h]
 \centering
 \caption{Decoder-Only (Llama 3.2 1B Instruct)}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \toprule
-\textbf{Scheme} & \textbf{Size (GB)} & \textbf{Tokens/s} & \textbf{Perplexity} & \textbf{Peak VRAM} \\
+\textbf{Scheme} & \textbf{Size (GB)} & \textbf{Compression} & \textbf{Tokens/s} & \textbf{TTFT (ms)} & \textbf{Perplexity} \\
 \midrule
-Baseline & & & & \\
-FP8      & & & & \\
-INT8     & & & & \\
-INT4     & & & & \\
-FP4      & & & & \\
+Baseline (BF16) & 2.47 & ---       & ---       & ---  & 17.25 \\
+W8A8 (INT8)     & 1.50 & 39\%     & 16{,}398  & 51.9 & 17.45 \\
+FP8             & 1.50 & 39\%     & 15{,}121  & 38.3 & 17.54 \\
+NVFP4           & 1.07 & 57\%     & 14{,}397  & 45.7 & 18.66 \\
+W4A16 (INT4)    & 1.03 & 58\%     & 16{,}147  & 46.2 & \textbf{51.61} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -197,15 +190,15 @@ FP4      & & & & \\
 \begin{table}[h]
 \centering
 \caption{MoE (DeepSeek-MoE-16B-Chat)}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \toprule
-\textbf{Scheme} & \textbf{Size (GB)} & \textbf{Tokens/s} & \textbf{Perplexity} & \textbf{Peak VRAM} \\
+\textbf{Scheme} & \textbf{Size (GB)} & \textbf{Compression} & \textbf{Tokens/s} & \textbf{TTFT (ms)} & \textbf{Perplexity} \\
 \midrule
-Baseline & & & & \\
-FP8      & & & & \\
-INT8     & & & & \\
-INT4     & & & & \\
-FP4      & & & & \\
+Baseline (BF16) & 32.75 & ---      & ---      & ---   & 29.80 \\
+W8A8 (INT8)     & 16.82 & 49\%    & 5{,}530  & 103.1 & 29.70 \\
+FP8             & 16.82 & 49\%    & 7{,}015  & 115.9 & 30.32 \\
+NVFP4           & 9.85  & 70\%    & 5{,}168  & 94.3  & 30.87 \\
+W4A16 (INT4)    & 9.11  & 72\%    & 6{,}322  & 87.2  & 32.56 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -217,9 +210,9 @@ FP4      & & & & \\
 When quantizing MoE models, certain layers must be excluded from quantization to preserve model quality. Two layers were kept at full precision in all DeepSeek MoE quantization runs:
 
 \begin{itemize}
-  \item \textbf{\texttt{lm\_head}} — The final projection layer that maps hidden states to vocabulary logits. Every token prediction flows through this layer, making it disproportionately sensitive to quantization error. Since it represents a negligible fraction of total model parameters, the cost of keeping it in FP16 is effectively zero.
+  \item \textbf{\texttt{lm\_head}}: The final projection layer that maps hidden states to vocabulary logits. Every token prediction flows through this layer, making it disproportionately sensitive to quantization error. Since it represents a negligible fraction of total model parameters, the cost of keeping it in FP16 is effectively zero.
 
-  \item \textbf{\texttt{re:.*mlp\textbackslash{}.gate\$}} — The MoE router weights. For each token, the router computes scores across all 64 experts and selects the top 6 for activation (plus 2 shared experts that are always active). These weights are extremely small (a linear projection of $2048 \times 64 \approx 131$K parameters per layer), but quantization errors here can change \emph{which experts are selected} entirely — a token intended for expert 12 might be misrouted to expert 37. This cascading misrouting degrades quality far more than slightly imprecise arithmetic within the correct expert. The compression savings from quantizing these tiny layers would be negligible anyway.
+  \item \textbf{\texttt{re:.*mlp\textbackslash{}.gate\$}}: The MoE router weights. For each token, the router computes scores across all 64 experts and selects the top 6 for activation (plus 2 shared experts that are always active). These weights are extremely small (a linear projection of $2048 \times 64 \approx 131$K parameters per layer), but quantization errors here can change \emph{which experts are selected} entirely — a token intended for expert 12 might be misrouted to expert 37. This cascading misrouting degrades quality far more than slightly imprecise arithmetic within the correct expert. The compression savings from quantizing these tiny layers would be negligible anyway.
 \end{itemize}
 
 DeepSeek-MoE-16B uses 2 shared experts per layer that are unconditionally active (always added to every token's computation). The first transformer layer uses a dense FFN instead of MoE (\texttt{first\_k\_dense\_replace: 1}), which is handled transparently by the quantizer.
@@ -230,11 +223,14 @@ An alternative strategy would be to skip quantization of early transformer layer
 
 \subsection{Additional Observations}
 \begin{itemize}
-  \item Impact of quantization on expert routing
-  \item Per-expert vs.\ global quantization scaling
-  \item Any expert load-balancing shifts post-quantization
+  \item \textbf{MoE resilience to aggressive quantization:} DeepSeek's W4A16 perplexity increased only 9.3\% vs.\ Llama's 199\%. The MoE architecture's distributed computation across 64 experts provides natural resilience — quantization errors in individual experts are diluted when 6 experts contribute to each token's output.
+
+  \item \textbf{Dense first layer:} DeepSeek's \texttt{first\_k\_dense\_replace: 1} means the first transformer layer uses a standard dense FFN rather than MoE. This layer was quantized normally alongside all other linear layers, with no special treatment needed.
+
+  \item \textbf{Group size incompatibility:} The dense first layer's \texttt{down\_proj} has 10{,}944 columns, which is not divisible by the GPTQ group size of 128. This only affects W4A16 (group strategy) and NVFP4 (tensor\_group strategy); W8A8 and FP8 use per-channel/per-tensor strategies that don't require group-size divisibility. The layer was excluded from quantization for W4A16 and NVFP4 via the \texttt{ignore} list.
 \end{itemize}
 
+\newpage
 \section{Bug Found: \texttt{actorder} Serialization in llm-compressor}
 
 During this study, I discovered a bug in \texttt{llm-compressor} 0.11.0 (\texttt{compressed-tensors} 0.16.0) that prevents W8A8 and FP8 models quantized with GPTQ from being served by vLLM.
@@ -275,14 +271,20 @@ This patch was applied to both the HuggingFace-uploaded models and the PVC copie
 
 \subsection{Upstream Report}
 
-I filed this as \href{https://github.com/vllm-project/llm-compressor/issues/2805}{issue \#2805} on the llm-compressor repository with full reproduction steps, environment details, and a proposed fix. The issue was acknowledged by the maintainers and has since been addressed via a \texttt{compressed-tensors} version bump on vLLM main.
+I filed this as \href{https://github.com/vllm-project/llm-compressor/issues/2805}{issue \#2805} on the llm-compressor repository with full reproduction steps, environment details, and a proposed fix. The issue was acknowledged by the maintainers and has since been addressed via a \texttt{compressed-tensors} version bump (0.17.0) on vLLM main.
 
+\newpage
 \section{Key Takeaways}
 \begin{itemize}
-  \item Which schemes gave the best size/quality trade-off
-  \item Decoder-only vs.\ MoE quantization differences
-  \item Practical recommendations
-  \item Lessons learned with \texttt{llm-compressor}
+  \item \textbf{8-bit schemes are safe across architectures.} Both W8A8 and FP8 delivered $<$2\% perplexity degradation on both models, with ~40--50\% compression. For production deployments where quality is paramount, these are the reliable choice.
+
+  \item \textbf{INT4 is catastrophic on small models.} The 199\% perplexity increase on Llama-1B is the study's starkest finding. Sub-3B parameter models lack the redundancy to survive 4-bit weight quantization. NVFP4 at the same bit-width performs dramatically better (+8.2\%), demonstrating that the quantization \emph{format} matters as much as the bit-width.
+
+  \item \textbf{MoE architectures are inherently more quantization-resilient.} DeepSeek tolerated even INT4 gracefully (+9.3\% perplexity), likely because quantization errors in individual experts are averaged out across the routing mechanism. This suggests MoE models are better candidates for aggressive compression in memory-constrained deployments.
+
+  \item \textbf{NVFP4 is the best 4-bit option.} When maximum compression is needed, NVFP4 consistently outperforms INT4 on quality while achieving similar size reductions. The floating-point format's non-uniform quantization grid better preserves the weight distribution, especially for smaller models.
+
+  \item \textbf{Tooling maturity matters.} The actorder serialization bug (Section~8) blocked W8A8 and FP8 models from loading in vLLM entirely. Production quantization pipelines need end-to-end validation, not just compression — a model that won't load is worse than an uncompressed one.
 \end{itemize}
 
 \end{document}
