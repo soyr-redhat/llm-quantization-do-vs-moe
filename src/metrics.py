@@ -29,7 +29,7 @@ COLORS = {
 
 
 def _model_scheme_key(model, scheme):
-    return model if scheme == "Baseline" else f"{model}-{scheme}"
+    return f"{model}-{scheme}"
 
 
 def _slug(model):
