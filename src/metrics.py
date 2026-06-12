@@ -168,7 +168,6 @@ def plot_pct_change_perplexity(quality, output_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--results-dir", default="metrics/guidellm", help="Directory with guidellm JSON results")
     parser.add_argument("--lm-eval-dir", default="metrics/lm-eval", help="Directory with lm-eval results")
     parser.add_argument("--output-dir", default="metrics", help="Directory for output plots")
     args = parser.parse_args()
