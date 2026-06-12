@@ -140,7 +140,7 @@ This contrasts sharply with INT4's behavior on larger models where the same sche
 \end{itemize}
 The MoE model handles INT4 far more gracefully: only 9.3\% perplexity increase vs.\ Llama's 199\%. DeepSeek's 16B total parameters provide enough redundancy, and the MoE routing structure means quantization errors in any single expert are diluted across the 6 active experts per token. The actual gate weights (kept in FP16) ensure correct expert selection even when expert internals are aggressively compressed.
 
-Note: \texttt{model.layers.0.mlp.down\_proj} was excluded from INT4 quantization because its 10{,}944 columns are not divisible by the group size of 128.
+Note: \texttt{model.layers.0.mlp.down\_proj} was excluded from all quantization schemes because its 10{,}944 columns are not divisible by the group size of 128.
 
 \subsection{NVFP4 (W4A4 Float)}
 \subsubsection{Background}
