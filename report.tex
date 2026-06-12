@@ -95,7 +95,7 @@ FP8 delivers near-baseline quality with meaningful compression. The 1.7\% perple
   \item \textbf{Throughput:} 7{,}015 tokens/s, TTFT 115.9\,ms
   \item \textbf{Perplexity:} 30.32 (+1.7\% vs.\ baseline 29.80)
 \end{itemize}
-FP8 achieves nearly identical perplexity degradation on the MoE model as on the decoder-only model, and delivers the highest throughput that we see out of all schemes on DeepSeek. The \texttt{tensor} strategy avoids the actorder serialization bug (see Section~8).
+FP8 achieves nearly identical perplexity degradation on the MoE model as on the decoder-only model, and delivers the highest throughput that we see out of all schemes on DeepSeek. The \texttt{tensor} strategy avoids the actorder serialization bug (see Section~7).
 
 \subsection{INT8 (W8A8 Integer)}
 \subsubsection{Background}
@@ -199,27 +199,28 @@ W4A16 (INT4)    & 9.11  & 72\%    & 6{,}322  & 87.2  & 32.56 \\
 
 \subsection{Layer Ignore Strategy}
 
-When quantizing MoE models, certain layers must be excluded from quantization to preserve model quality. Two layers were kept at full precision in all DeepSeek MoE quantization runs:
+When quantizing models, certain layers must be excluded from quantization to preserve their quality. One layer in Llama3.1, and Two layers were kept at full precision in all DeepSeek MoE quantization runs:
 
 \begin{itemize}
   \item \textbf{\texttt{lm\_head}}: The final projection layer that maps hidden states to vocabulary logits. Every token prediction flows through this layer, making it disproportionately sensitive to quantization error. Since it represents a negligible fraction of total model parameters, the cost of keeping it in FP16 is effectively zero.
 
-  \item \textbf{\texttt{re:.*mlp\textbackslash{}.gate\$}}: The MoE router weights. For each token, the router computes scores across all 64 experts and selects the top 6 for activation (plus 2 shared experts that are always active). These weights are extremely small (a linear projection of $2048 \times 64 \approx 131$K parameters per layer), but quantization errors here can change \emph{which experts are selected} entirely — a token intended for expert 12 might be misrouted to expert 37. This cascading misrouting degrades quality far more than slightly imprecise arithmetic within the correct expert. The compression savings from quantizing these tiny layers would be negligible anyway.
+  \item \textbf{\texttt{re:.*mlp\textbackslash{}.gate\$}}: The MoE router weights. For each token, the router computes scores across all 64 experts and selects the top 6 for activation plus shared experts as well. These weights are extremely small (a linear projection of $2048 \times 64 \approx 131$K parameters per layer), but quantization errors are a huge deal, as increased error can affect what expert is chosen entirely. This cascading misrouting degrades quality far more than slightly imprecise arithmetic within the correct expert. The compression savings from quantizing these tiny layers would be negligible anyway, so the safe bet is to just ignore them.
 \end{itemize}
 
-DeepSeek-MoE-16B uses 2 shared experts per layer that are unconditionally active (always added to every token's computation). The first transformer layer uses a dense FFN instead of MoE (\texttt{first\_k\_dense\_replace: 1}), which is handled transparently by the quantizer.
+\subsection{Why Not Ignore Entire Early Layers?}
 
-\subsubsection{Why Not Ignore Entire Early Layers?}
-
-An alternative strategy would be to skip quantization of early transformer layers entirely, based on the intuition that early layers learn more foundational representations. However, GPTQ's calibration-based approach already compensates for per-layer sensitivity by optimizing quantization parameters using the Hessian of each layer's activations. Ignoring entire layers forfeits the compression opportunity without meaningful quality benefit. The gate-only strategy is more surgical: protect the small, fragile routing decisions and quantize everything else.
+An alternative strategy would be to skip quantization of early transformer layers entirely, based on the intuition that early layers learn more foundational representations. Ignoring entire layers forfeits the compression opportunity without meaningful quality benefit. The gate-only strategy is more surgical, whilst being trivial to implement, reducing footprints as much as possible, minus the missed opportunities of skipping multiple layers altogether.
 
 \subsection{Additional Observations}
 \begin{itemize}
-  \item \textbf{MoE resilience to aggressive quantization:} DeepSeek's W4A16 perplexity increased only 9.3\% vs.\ Llama's 199\%. The MoE architecture's distributed computation across 64 experts provides natural resilience — quantization errors in individual experts are diluted when 6 experts contribute to each token's output.
+  \item \textbf{MoE resilience to aggressive quantization:}\\
+  DeepSeek's W4A16 perplexity increased only 9.3\% vs.\ Llama's 199\%. The MoE architecture's distributed computation across 64 experts provides natural resilience. Quantization errors in individual experts are diluted when 6 experts contribute to each token's output.
 
-  \item \textbf{Dense first layer:} DeepSeek's \texttt{first\_k\_dense\_replace: 1} means the first transformer layer uses a standard dense FFN rather than MoE. This layer was quantized normally alongside all other linear layers, with no special treatment needed.
+  \item \textbf{Dense first layer:}\\
+  DeepSeek's \texttt{first\_k\_dense\_replace: 1}. This layer was quantized normally alongside all other linear layers, with no special treatment needed.
 
-  \item \textbf{Group size incompatibility:} The dense first layer's \texttt{down\_proj} has 10{,}944 columns, which is not divisible by the GPTQ group size of 128. This only affects W4A16 (group strategy) and NVFP4 (tensor\_group strategy); W8A8 and FP8 use per-channel/per-tensor strategies that don't require group-size divisibility. The layer was excluded from quantization for W4A16 and NVFP4 via the \texttt{ignore} list.
+  \item \textbf{Group size incompatibility:}\\
+  The dense first layer's \texttt{down\_proj} has 10{,}944 columns, which is not divisible by the GPTQ group size of 128. This seemed to only affect the group strategies. W8A8 and FP8 use per-channel/per-tensor strategies that don't require group-size divisibility. The layer was excluded from quantization for W4A16 and NVFP4 via the \texttt{ignore} list.
 \end{itemize}
 
 
@@ -229,7 +230,7 @@ During this study, I discovered a bug in \texttt{llm-compressor} 0.11.0 (\texttt
 
 \subsection{The Problem}
 
-\texttt{GPTQModifier} unconditionally writes \texttt{actorder: "static"} into the saved model's \texttt{config.json} for all quantization schemes. Activation ordering controls the order columns are processed within each group during GPTQ quantization — it is only meaningful when the quantization strategy uses groups (\texttt{group} or \texttt{tensor\_group}).
+\texttt{GPTQModifier} unconditionally writes \texttt{actorder: "static"} into the saved model's \texttt{config.json} for every quantization scheme that we came across. Activation ordering controls the order columns are processed within each group during GPTQ quantization, which is only meaningful when the quantization strategy uses groups (\texttt{group} or \texttt{tensor\_group}).
 
 For W8A8 (\texttt{strategy: "channel"}) and FP8 (\texttt{strategy: "tensor"}), there are no groups, so \texttt{actorder} is semantically meaningless. vLLM 0.22.1 correctly validates this and rejects the model at load time:
 
@@ -259,24 +260,23 @@ for g in config["quantization_config"]["config_groups"].values():
         w["actorder"] = None
 \end{lstlisting}
 
-This patch was applied to both the HuggingFace-uploaded models and the PVC copies used for benchmarking.
+This patch was applied to both the HuggingFace-uploaded models and the PVC copies used for benchmarking, which proved complete functionality.
 
 \subsection{Upstream Report}
 
-I filed this as \href{https://github.com/vllm-project/llm-compressor/issues/2805}{issue \#2805} on the llm-compressor repository with full reproduction steps, environment details, and a proposed fix. The issue was acknowledged by the maintainers and has since been addressed via a \texttt{compressed-tensors} version bump (0.17.0) on vLLM main.
+I filed this as \href{https://github.com/vllm-project/llm-compressor/issues/2805}{issue \#2805} on the llm-compressor repository with full reproduction steps, environment details, and a proposed fix. The issue was acknowledged by the maintainers and has since been addressed via a \texttt{compressed-tensors} version bump (0.17.0) on vLLM main, so no fix required there!
 
 
 \section{Key Takeaways}
 \begin{itemize}
   \item \textbf{8-bit schemes are safe across architectures.} Both W8A8 and FP8 delivered $<$2\% perplexity degradation on both models, with ~40--50\% compression. For production deployments where quality is paramount, these are the reliable choice.
 
-  \item \textbf{INT4 is catastrophic on small models.} The 199\% perplexity increase on Llama-1B is the study's starkest finding. Sub-3B parameter models lack the redundancy to survive 4-bit weight quantization. NVFP4 at the same bit-width performs dramatically better (+8.2\%), demonstrating that the quantization \emph{format} matters as much as the bit-width.
+  \item \textbf{INT4 is catastrophic on small models.} The 199\% perplexity increase on Llama-1B was drastic, but unsurprising. SLMs lack the redundancy to survive 4-bit weight quantization. NVFP4 at the same bit-width performs dramatically better (+8.2\%), demonstrating that the quantization \emph{format} matters as much as the bit-width.
 
   \item \textbf{MoE architectures are inherently more quantization-resilient.} DeepSeek tolerated even INT4 gracefully (+9.3\% perplexity), likely because quantization errors in individual experts are averaged out across the routing mechanism. This suggests MoE models are better candidates for aggressive compression in memory-constrained deployments.
 
-  \item \textbf{NVFP4 is the best 4-bit option.} When maximum compression is needed, NVFP4 consistently outperforms INT4 on quality while achieving similar size reductions. The floating-point format's non-uniform quantization grid better preserves the weight distribution, especially for smaller models.
+  \item \textbf{NVFP4 is the best 4-bit option.} When maximum compression is needed, NVFP4 consistently outperforms INT4 on quality while achieving similar size reductions. The floating-point format's non-uniform quantization grid better preserves the weight distribution, especially for smaller models (granted we have the architecture to run it).
 
-  \item \textbf{Tooling maturity matters.} The actorder serialization bug (Section~8) blocked W8A8 and FP8 models from loading in vLLM entirely. Production quantization pipelines need end-to-end validation, not just compression — a model that won't load is worse than an uncompressed one.
 \end{itemize}
 
 \end{document}
