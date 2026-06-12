@@ -114,7 +114,7 @@ W8A8 achieves the best quality preservation of all schemes on Llama and the high
   \item \textbf{Throughput:} 5{,}530 tokens/s, TTFT 103.1\,ms
   \item \textbf{Perplexity:} 29.70 (\textbf{$-$0.3\%} vs.\ baseline)
 \end{itemize}
-W8A8 on DeepSeek did actually improve perplexity slightly over the BF16 baseline (29.70 vs.\ 29.80). This is not uncommon, the regularization that comes with quantization can marginally benefit models evaluated on held-out data. Like FP8, the \texttt{channel} strategy triggers the actorder serialization bug.
+W8A8 on DeepSeek did actually improve perplexity slightly over the BF16 baseline (29.70 vs.\ 29.80). This is not uncommon, as the regularization that comes with quantization can marginally benefit models evaluated on held-out data. Like FP8, the \texttt{channel} strategy triggers the actorder serialization bug.
 
 \subsection{INT4 (W4A16)}
 \subsubsection{Background}
