@@ -140,56 +140,6 @@ def _bar_chart(schemes, values, colors, ylabel, title, output_path, annotate_fmt
     print(f"Saved {output_path}")
 
 
-def plot_tps(data, output_dir):
-    for model in MODELS:
-        schemes, values, colors = [], [], []
-        for scheme in SCHEMES:
-            key = _model_scheme_key(model, scheme)
-            if key in data:
-                schemes.append(scheme)
-                values.append(data[key]["tps"])
-                colors.append(COLORS[scheme])
-        if not values:
-            continue
-        label = MODEL_LABELS.get(model, model)
-        _bar_chart(schemes, values, colors,
-                   "Tokens/s", f"Output Token Throughput — {label}",
-                   os.path.join(output_dir, f"tps_{_slug(model)}.png"))
-
-
-def plot_ttft_vs_tps(data, output_path):
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    for key, vals in data.items():
-        parts = key.rsplit("-", 1)
-        scheme = parts[-1] if len(parts) > 1 and parts[-1] in SCHEMES else "Baseline"
-        model = parts[0] if scheme != "Baseline" else key
-
-        marker = "o" if "Llama" in key else "s"
-        ax.scatter(
-            vals["tps"],
-            vals["ttft"] * 1000,
-            c=COLORS.get(scheme, "#999"),
-            marker=marker,
-            s=120,
-            label=f"{scheme} ({'DO' if 'Llama' in key else 'MoE'})",
-            edgecolors="black",
-            linewidth=0.5,
-        )
-
-    handles, labels = ax.get_legend_handles_labels()
-    unique = dict(zip(labels, handles))
-    ax.legend(unique.values(), unique.keys(), loc="best", fontsize=9)
-    ax.set_xlabel("Output Tokens/s")
-    ax.set_ylabel("TTFT (ms)")
-    ax.set_title("Time to First Token vs. Throughput", fontsize=13)
-    plt.tight_layout()
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    plt.savefig(output_path, dpi=150)
-    plt.close()
-    print(f"Saved {output_path}")
-
-
 def plot_quality(data, output_dir):
     for model in MODELS:
         schemes, values, colors = [], [], []
