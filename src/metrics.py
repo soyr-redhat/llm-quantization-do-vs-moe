@@ -66,59 +66,6 @@ def load_lm_eval_results(results_dir):
     return data
 
 
-def load_guidellm_results(results_dir):
-    data = {}
-    if not os.path.isdir(results_dir):
-        return data
-    for fname in os.listdir(results_dir):
-        if not fname.endswith(".json"):
-            continue
-        with open(os.path.join(results_dir, fname)) as f:
-            result = json.load(f)
-
-        name = fname.replace(".json", "")
-        benchmarks = result.get("benchmarks", [result])
-        bench = benchmarks[-1] if isinstance(benchmarks, list) else benchmarks
-
-        metrics = bench.get("metrics", {})
-        if metrics:
-            tps_block = metrics.get("output_tokens_per_second", {}).get("successful", {})
-            ttft_block = metrics.get("time_to_first_token_ms", {}).get("successful", {})
-            itl_block = metrics.get("inter_token_latency_ms", {}).get("successful", {})
-            tps = tps_block.get("mean", 0)
-            ttft = ttft_block.get("mean", 0) / 1000.0
-        else:
-            tps_block, ttft_block, itl_block = {}, {}, {}
-            tps = bench.get("output_token_throughput", 0)
-            ttft = bench.get("ttft_mean", 0) or bench.get("time_to_first_token_mean", 0)
-
-        pct_keys = ["p50", "p75", "p90", "p95", "p99"]
-        def _extract_percentiles(block):
-            pcts = block.get("percentiles", {})
-            return {k: pcts.get(k, 0) for k in pct_keys}
-
-        data[name] = {
-            "tps": tps,
-            "ttft": ttft,
-            "ttft_percentiles": _extract_percentiles(ttft_block),
-            "itl_percentiles": _extract_percentiles(itl_block),
-            "tps_percentiles": _extract_percentiles(tps_block),
-        }
-    return data
-
-
-def load_disk_sizes(output_dir):
-    sizes = {}
-    for dirpath, _, filenames in os.walk(output_dir):
-        model_name = os.path.basename(dirpath)
-        total = sum(
-            os.path.getsize(os.path.join(dirpath, f))
-            for f in filenames
-        )
-        if total > 0:
-            sizes[model_name] = total / (1024 ** 3)
-    return sizes
-
 
 def _bar_chart(schemes, values, colors, ylabel, title, output_path, annotate_fmt=".1f"):
     fig, ax = plt.subplots(figsize=(10, 6))
