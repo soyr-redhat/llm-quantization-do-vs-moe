@@ -222,62 +222,15 @@ def plot_pct_change_perplexity(quality, output_dir):
     print(f"Saved {path}")
 
 
-def export_summary_csv(perf, quality, sizes, output_path="metrics/summary.csv"):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    rows = []
-    for model in MODELS:
-        arch = "Decoder-Only" if "Llama" in model else "MoE (DeepSeek)"
-        for scheme in SCHEMES:
-            key = _model_scheme_key(model, scheme)
-            row = {
-                "model": model,
-                "architecture": arch,
-                "scheme": scheme,
-                "size_gb": f"{sizes.get(key, 0):.2f}" if key in sizes else "",
-                "tps": f"{perf[key]['tps']:.1f}" if key in perf else "",
-                "ttft_ms": f"{perf[key]['ttft'] * 1000:.1f}" if key in perf else "",
-                "perplexity": f"{quality[key]['perplexity']:.2f}" if key in quality else "",
-            }
-            if any(row[c] for c in ["size_gb", "tps", "ttft_ms", "perplexity"]):
-                rows.append(row)
-
-    if not rows:
-        return
-
-    fields = ["model", "architecture", "scheme", "size_gb", "tps", "ttft_ms", "perplexity"]
-    with open(output_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows(rows)
-    print(f"Saved {output_path}")
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-dir", default="metrics/guidellm", help="Directory with guidellm JSON results")
     parser.add_argument("--lm-eval-dir", default="metrics/lm-eval", help="Directory with lm-eval results")
     parser.add_argument("--output-dir", default="metrics", help="Directory for output plots")
-    parser.add_argument("--model-dir", default="output", help="Directory with quantized models for disk size")
     args = parser.parse_args()
 
-    data = load_guidellm_results(args.results_dir)
     quality = load_lm_eval_results(args.lm_eval_dir)
-    sizes = load_disk_sizes(args.model_dir)
 
-    if data:
-        plot_tps(data, args.output_dir)
-        plot_ttft_vs_tps(data, os.path.join(args.output_dir, "ttft_vs_tps.png"))
-        plot_latency_percentiles(data, args.output_dir)
     if quality:
         plot_quality(quality, args.output_dir)
-    if sizes:
-        plot_disk_sizes(sizes, args.output_dir)
-
-    if data or quality or sizes:
-        plot_grouped_bars(data, quality, sizes, args.output_dir)
-    if data and quality:
-        plot_pct_change(data, quality, args.output_dir)
-    if data and quality and sizes:
-        plot_radar(data, quality, sizes, args.output_dir)
-
-    export_summary_csv(data, quality, sizes, os.path.join(args.output_dir, "summary.csv"))
+        plot_pct_change_perplexity(quality, args.output_dir)
