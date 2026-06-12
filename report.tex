@@ -114,7 +114,7 @@ W8A8 achieves the best quality preservation of all schemes on Llama and the high
   \item \textbf{Throughput:} 5{,}530 tokens/s, TTFT 103.1\,ms
   \item \textbf{Perplexity:} 29.70 (\textbf{$-$0.3\%} vs.\ baseline)
 \end{itemize}
-W8A8 on DeepSeek did actually improve perplexity slightly over the BF16 baseline (29.70 vs.\ 29.80). This is not uncommon, phenomenon where the regularization that comes with quantization can marginally benefit models evaluated on held-out data. Like FP8, the \texttt{channel} strategy triggers the actorder serialization bug.
+W8A8 on DeepSeek did actually improve perplexity slightly over the BF16 baseline (29.70 vs.\ 29.80). This is not uncommon, the regularization that comes with quantization can marginally benefit models evaluated on held-out data. Like FP8, the \texttt{channel} strategy triggers the actorder serialization bug.
 
 \subsection{INT4 (W4A16)}
 \subsubsection{Background}
@@ -150,7 +150,7 @@ NVFP4 is NVIDIA's 4-bit floating-point format, designed for Hopper and Blackwell
   \item \textbf{Throughput:} 14{,}397 tokens/s, TTFT 45.7\,ms
   \item \textbf{Perplexity:} 18.66 (+8.2\% vs.\ baseline)
 \end{itemize}
-NVFP4 dramatically outperforms INT4 on the small model (18.66 vs.\ 51.61 perplexity) despite similar compression ratios (1.07\,GB vs.\ 1.03\,GB). Additionally, The 8.2\% perplexity increase is tolerable for most applications.
+NVFP4 dramatically outperforms INT4 on the small model (18.66 vs.\ 51.61 perplexity) despite similar compression ratios (1.07\,GB vs.\ 1.03\,GB). Additionally, the 8.2\% perplexity increase is tolerable for most applications.
 
 \subsubsection{MoE Results}
 \begin{itemize}
@@ -194,7 +194,7 @@ W4A16 (INT4)    & 9.11  & 72\%    & 6{,}322  & 87.2  & 32.56 \\
 \end{tabular}
 \end{table*}
 
-\section{MoE-Specific Observations}
+\section{Observations}
 
 \subsection{Layer Ignore Strategy}
 
@@ -216,7 +216,8 @@ An alternative strategy would be to skip quantization of early transformer layer
   DeepSeek's W4A16 perplexity increased only 9.3\% vs.\ Llama's 199\%. The MoE architecture's distributed computation across 64 experts provides natural resilience. Quantization errors in individual experts are diluted when 6 experts contribute to each token's output.
 
   \item \textbf{Dense first layer:}\\
-  DeepSeek's \texttt{first\_k\_dense\_replace: 1}. This layer was quantized normally alongside all other linear layers, with no special treatment needed.
+  DeepSeek's \texttt{first\_k\_dense\_replace: 1}, meaning the first transformer layer is a standard
+  dense FFN rather than MoE. This layer was quantized normally alongside all other linear layers, with no special treatment needed.
 
   \item \textbf{Group size incompatibility:}\\
   The dense first layer's \texttt{down\_proj} has 10{,}944 columns, which is not divisible by the GPTQ group size of 128. This seemed to only affect the group strategies. W8A8 and FP8 use per-channel/per-tensor strategies that don't require group-size divisibility. The layer was excluded from quantization for W4A16 and NVFP4 via the \texttt{ignore} list.
