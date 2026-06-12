@@ -5,6 +5,7 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{abstract}
+\usepackage{graphicx}
 
 \lstset{
   basicstyle=\ttfamily\footnotesize,
@@ -195,6 +196,12 @@ W4A16 (INT4)    & 9.11  & 72\%    & 6{,}322  & 87.2  & 32.56 \\
 \bottomrule
 \end{tabular}
 \end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{metrics/pct_change_perplexity.png}
+\caption{Perplexity \% change vs.\ baseline for each quantization scheme across both architectures.}
+\end{figure*}
 
 \section{Observations}
 

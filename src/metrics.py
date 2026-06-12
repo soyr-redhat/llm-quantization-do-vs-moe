@@ -2,6 +2,7 @@ import json
 import os
 import argparse
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import numpy as np
 
 MODELS = [
@@ -139,24 +140,29 @@ def plot_pct_change_perplexity(quality, output_dir):
             else:
                 pct_changes.append(0)
 
-        bar_colors = ["#F44336" if pct > 0 else "#4CAF50" for pct in pct_changes]
+        bar_colors = ["#4CAF50" if pct <= 0 else "#F44336" for pct in pct_changes]
 
         bars = ax.bar(x + offsets[i], pct_changes, width * 0.9,
                       color=bar_colors, edgecolor="white", linewidth=0.5,
                       alpha=1.0 if i == 0 else 0.65,
-                      hatch="" if i == 0 else "//",
-                      label=MODEL_SHORT.get(model, model))
+                      hatch="" if i == 0 else "//")
         for bar, pct in zip(bars, pct_changes):
             va = "bottom" if pct >= 0 else "top"
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
                     f"{pct:+.1f}%", ha="center", va=va, fontsize=9, fontweight="bold")
 
     ax.axhline(y=0, color="black", linewidth=0.8)
-    ax.set_ylabel("% Change vs Baseline", fontsize=11)
-    ax.set_title("Perplexity — % Change vs Baseline", fontsize=14, fontweight="bold")
+    ax.set_yscale("symlog", linthresh=10)
+    ax.set_ylim(bottom=-2, top=350)
+    ax.set_ylabel("% Change vs Baseline (symlog)", fontsize=11)
+    ax.set_title("Perplexity (% Change vs Baseline)", fontsize=14, fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels(QUANT_SCHEMES, fontsize=11)
-    ax.legend(fontsize=10)
+    legend_handles = [
+        mpatches.Patch(facecolor="#F44336", edgecolor="white", label="Llama 1B (DO)"),
+        mpatches.Patch(facecolor="#F44336", edgecolor="white", alpha=0.65, hatch="//", label="DeepSeek 16B (MoE)"),
+    ]
+    ax.legend(handles=legend_handles, fontsize=10)
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     path = os.path.join(output_dir, "pct_change_perplexity.png")
@@ -166,13 +172,21 @@ def plot_pct_change_perplexity(quality, output_dir):
     print(f"Saved {path}")
 
 
+MODEL_DIRS = {
+    "Llama-3.2-1B-Instruct": "metrics/llama_3.2_1B",
+    "deepseek-moe-16b-chat": "metrics/deepseek_moe_16b",
+}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lm-eval-dir", default="metrics/lm-eval", help="Directory with lm-eval results")
     parser.add_argument("--output-dir", default="metrics", help="Directory for output plots")
     args = parser.parse_args()
 
-    quality = load_lm_eval_results(args.lm_eval_dir)
+    quality = {}
+    for model, model_dir in MODEL_DIRS.items():
+        lm_eval_dir = os.path.join(model_dir, "lm-eval")
+        quality.update(load_lm_eval_results(lm_eval_dir))
 
     if quality:
         plot_quality(quality, args.output_dir)
