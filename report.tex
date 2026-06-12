@@ -1,12 +1,13 @@
-\documentclass[11pt]{article}
-\usepackage[margin=1in]{geometry}
+\documentclass[10pt,twocolumn]{article}
+\usepackage[margin=0.75in]{geometry}
 \usepackage{hyperref}
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{abstract}
 
 \lstset{
-  basicstyle=\ttfamily\small,
+  basicstyle=\ttfamily\footnotesize,
   backgroundcolor=\color{gray!10},
   frame=single,
   breaklines=true
@@ -19,27 +20,14 @@
 
 \begin{document}
 \maketitle
-\newpage
-\section{Overview}
-\begin{itemize}
-  \item \textbf{Objective:}
-  The goal for this project is to gain a level of understanding of how certain quantization schemes impact a model in a few different ways. (All of these will be done in comparison to the baseline model):
-  \begin{itemize}
-      \item performance
-      \item memory consumption
-      \item throughput
-  \end{itemize}
-  To do so, I'll apply FP8, INT8, INT4, and FP4 quantization schemes to a small decoder-only model and a small MoE model using \texttt{llm-compressor}.
-  \item \textbf{Models:}
-  The models in question for this weekend+future week's study are:
-    \begin{itemize}
-      \item \href{https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct}{Meta-Llama-3.2-1B-Instruct} for the decoder-only model
-      \item \href{https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat}{DeepSeek-MoE-16B-Chat} for our MoE model.
-    \end{itemize}
-\end{itemize}
-\newpage
+
+\begin{onecolabstract}
+This study investigates how four quantization schemes: FP8, INT8, INT4, and NVFP4, affect model quality (perplexity), inference throughput, and memory footprint across two LLM architectures: a decoder-only model (\href{https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct}{Llama-3.2-1B-Instruct}) and a Mixture-of-Experts model (\href{https://huggingface.co/deepseek-ai/deepseek-moe-16b-chat}{DeepSeek-MoE-16B-Chat}). All quantization in this research has been performed with \texttt{llm-compressor} using GPTQ as the constant for calibration algorithms. I've found that 8-bit schemes (W8A8 and FP8) are safe across both architectures with $<$2\% perplexity degradation, while INT4 causes catastrophic quality loss on the small decoder-only model (+199\% perplexity, which we will get into later on) but is relatively well-tolerated by the MoE architecture (+9.3\%). NVFP4 consistently outperforms INT4 at comparable compression ratios, and MoE models appear to have a sort of armor against aggressive quantization due to their distributed expert computation.
+\end{onecolabstract}
+
 
 \section{Environment Setup}
+In order to conduct my experiments, I wanted to gurantee that I had the ability to run through tests in a relatively quick manner, so I made sure to go beefy when it came to compute (totally overkill).
 \begin{itemize}
   \item \textbf{Quantization:} NVIDIA H200 (141GB HBM3e) on an OpenShift cluster, using \texttt{vllm/vllm-openai:latest} container with \texttt{llm-compressor} 0.11.0 and \texttt{compressed-tensors} 0.16.0.
   \item \textbf{Inference:} NVIDIA H200 MIG slice (1g.18gb, 18GB VRAM) on the same cluster, served via vLLM 0.22.1 with the OpenAI-compatible API.
@@ -64,7 +52,7 @@ Each model variant is benchmarked under the same conditions (prompt distribution
 \subsection{Model Size}
 On-disk model size (in GB) is recorded for each quantized checkpoint and the baseline, directly reflecting compression ratio.
 
-\newpage
+
 \section{Baseline: Unquantized Models}
 
 \subsection{Decoder-Only (Llama 3.2 1B Instruct)}
@@ -171,7 +159,7 @@ On the MoE model, NVFP4 again outperforms INT4 on quality (3.6\% vs.\ 9.3\% perp
 
 \section{Comparison}
 
-\begin{table}[h]
+\begin{table*}[t]
 \centering
 \caption{Decoder-Only (Llama 3.2 1B Instruct)}
 \begin{tabular}{lccccc}
@@ -185,9 +173,9 @@ NVFP4           & 1.07 & 57\%     & 14{,}397  & 45.7 & 18.66 \\
 W4A16 (INT4)    & 1.03 & 58\%     & 16{,}147  & 46.2 & \textbf{51.61} \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-\begin{table}[h]
+\begin{table*}[t]
 \centering
 \caption{MoE (DeepSeek-MoE-16B-Chat)}
 \begin{tabular}{lccccc}
@@ -201,7 +189,7 @@ NVFP4           & 9.85  & 70\%    & 5{,}168  & 94.3  & 30.87 \\
 W4A16 (INT4)    & 9.11  & 72\%    & 6{,}322  & 87.2  & 32.56 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 \section{MoE-Specific Observations}
 
@@ -230,7 +218,7 @@ An alternative strategy would be to skip quantization of early transformer layer
   \item \textbf{Group size incompatibility:} The dense first layer's \texttt{down\_proj} has 10{,}944 columns, which is not divisible by the GPTQ group size of 128. This only affects W4A16 (group strategy) and NVFP4 (tensor\_group strategy); W8A8 and FP8 use per-channel/per-tensor strategies that don't require group-size divisibility. The layer was excluded from quantization for W4A16 and NVFP4 via the \texttt{ignore} list.
 \end{itemize}
 
-\newpage
+
 \section{Bug Found: \texttt{actorder} Serialization in llm-compressor}
 
 During this study, I discovered a bug in \texttt{llm-compressor} 0.11.0 (\texttt{compressed-tensors} 0.16.0) that prevents W8A8 and FP8 models quantized with GPTQ from being served by vLLM.
@@ -273,7 +261,7 @@ This patch was applied to both the HuggingFace-uploaded models and the PVC copie
 
 I filed this as \href{https://github.com/vllm-project/llm-compressor/issues/2805}{issue \#2805} on the llm-compressor repository with full reproduction steps, environment details, and a proposed fix. The issue was acknowledged by the maintainers and has since been addressed via a \texttt{compressed-tensors} version bump (0.17.0) on vLLM main.
 
-\newpage
+
 \section{Key Takeaways}
 \begin{itemize}
   \item \textbf{8-bit schemes are safe across architectures.} Both W8A8 and FP8 delivered $<$2\% perplexity degradation on both models, with ~40--50\% compression. For production deployments where quality is paramount, these are the reliable choice.
