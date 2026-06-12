@@ -1,11 +1,8 @@
-import csv
 import json
 import os
 import argparse
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 import numpy as np
-from math import pi
 
 MODELS = [
     "Llama-3.2-1B-Instruct",
